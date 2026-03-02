@@ -122,7 +122,6 @@ public class InscripcionHandler {
                 .fechaInscripcion(inscripcion.getFechaInscripcion())
                 .estado(inscripcion.getEstado());
 
-        // Si la inscripción está enriquecida con persona
         if (inscripcion.getPersona() != null) {
             PersonaResponse personaResponse = PersonaResponse.builder()
                     .id(inscripcion.getPersona().getId())
@@ -134,7 +133,6 @@ public class InscripcionHandler {
             builder.persona(personaResponse);
         }
 
-        // Si la inscripción está enriquecida con bootcamp
         if (inscripcion.getBootcamp() != null) {
             BootcampCompleteResponse bootcampResponse = new BootcampCompleteResponse();
             bootcampResponse.setId(inscripcion.getBootcamp().getId());

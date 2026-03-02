@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Component
-@Order(-2) // Prioridad alta para capturar excepciones antes que el manejador por defecto
+@Order(-2)
 public class GlobalExceptionHandler implements WebExceptionHandler {
 
     private final ObjectMapper objectMapper;
@@ -51,7 +51,6 @@ public class GlobalExceptionHandler implements WebExceptionHandler {
             return writeResponse(exchange, HttpStatus.BAD_REQUEST, "INVALID_ARGUMENT", illegalEx.getMessage());
         }
 
-        // Caso por defecto
         return handleGenericException(exchange, ex);
     }
 

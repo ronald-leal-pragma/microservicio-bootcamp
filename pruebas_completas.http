@@ -1,0 +1,927 @@
+### ============================================
+### PRUEBAS COMPLETAS - HU1 a HU6
+### Sistema de Microservicios: Tecnología, Capacidad y Bootcamp
+### ============================================
+
+### ============================================
+### HU1 - CREAR TECNOLOGÍA
+### Microservicio Tecnología - Puerto 8081
+### ============================================
+
+### HU1 - Crear Tecnología 1: Java
+POST http://localhost:8081/api/tecnologia
+Content-Type: application/json
+
+{
+  "nombre": "Java",
+  "descripcion": "Lenguaje de programación orientado a objetos"
+}
+
+### HU1 - Crear Tecnología 2: Spring Boot
+POST http://localhost:8081/api/tecnologia
+Content-Type: application/json
+
+{
+  "nombre": "Spring Boot",
+  "descripcion": "Framework para facilitar el uso de Spring"
+}
+
+### HU1 - Crear Tecnología 3: Python
+POST http://localhost:8081/api/tecnologia
+Content-Type: application/json
+
+{
+  "nombre": "Python",
+  "descripcion": "Lenguaje de programación interpretado"
+}
+
+### HU1 - Crear Tecnología 4: Docker
+POST http://localhost:8081/api/tecnologia
+Content-Type: application/json
+
+{
+  "nombre": "Docker",
+  "descripcion": "Plataforma de contenerización"
+}
+
+### HU1 - Crear Tecnología 5: AWS
+POST http://localhost:8081/api/tecnologia
+Content-Type: application/json
+
+{
+  "nombre": "AWS",
+  "descripcion": "Servicios en la nube de Amazon"
+}
+
+### HU1 - Validación: Crear tecnología duplicada (debe fallar)
+POST http://localhost:8081/api/tecnologia
+Content-Type: application/json
+
+{
+  "nombre": "Java",
+  "descripcion": "Lenguaje duplicado"
+}
+
+### HU1 - Consultar tecnología por ID
+GET http://localhost:8081/api/tecnologia/1
+
+### HU1 - Consultar tecnología inexistente (debe retornar 404)
+GET http://localhost:8081/api/tecnologia/9999
+
+### ============================================
+### HU2 - CREAR CAPACIDAD
+### Microservicio Capacidad - Puerto 8082
+### ============================================
+
+### HU2 - Crear Capacidad 1: Backend Java (3 Tecnologías - IDs: 1, 2, 4)
+POST http://localhost:8082/api/capacidad
+Content-Type: application/json
+
+{
+  "nombre": "Backend Java",
+  "descripcion": "Desarrollo de microservicios con Java",
+  "tecnologiasIds": [1, 2, 4]
+}
+
+### HU2 - Crear Capacidad 2: Cloud Specialist (5 Tecnologías - IDs: 1, 2, 3, 4, 5)
+POST http://localhost:8082/api/capacidad
+Content-Type: application/json
+
+{
+  "nombre": "Cloud Specialist",
+  "descripcion": "Experto en despliegue y nube",
+  "tecnologiasIds": [1, 2, 3, 4, 5]
+}
+
+### HU2 - Crear Capacidad 3: Python Data (4 Tecnologías - IDs: 3, 4, 5, 1)
+POST http://localhost:8082/api/capacidad
+Content-Type: application/json
+
+{
+  "nombre": "Python Data",
+  "descripcion": "Analisis de datos con Python y Nube",
+  "tecnologiasIds": [3, 4, 5, 1]
+}
+
+### HU2 - Crear Capacidad 4: Frontend Web (2 Tecnologías - IDs: 1, 2)
+POST http://localhost:8082/api/capacidad
+Content-Type: application/json
+
+{
+  "nombre": "Frontend Web",
+  "descripcion": "Desarrollo de interfaces de usuario",
+  "tecnologiasIds": [1, 2, 4]
+}
+
+### HU2 - Validación: Crear capacidad con nombre duplicado (debe fallar)
+POST http://localhost:8082/api/capacidad
+Content-Type: application/json
+
+{
+  "nombre": "Backend Java",
+  "descripcion": "Capacidad duplicada",
+  "tecnologiasIds": [1, 2,4]
+}
+
+### HU2 - Validación: Crear capacidad con menos de 3 tecnologías (debe fallar)
+POST http://localhost:8082/api/capacidad
+Content-Type: application/json
+
+{
+  "nombre": "Capacidad Invalida",
+  "descripcion": "Solo 2 tecnologías",
+  "tecnologiasIds": [1, 2]
+}
+
+### HU2 - Validación: Crear capacidad con más de 20 tecnologías (debe fallar)
+POST http://localhost:8082/api/capacidad
+Content-Type: application/json
+
+{
+  "nombre": "Capacidad Invalida",
+  "descripcion": "Muchas tecnologías",
+  "tecnologiasIds": [1,2,3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5,1]
+}
+
+### HU2 - Consultar capacidad por ID
+GET http://localhost:8082/api/capacidad/1
+
+### HU2 - Consultar capacidad inexistente (debe retornar 404)
+GET http://localhost:8082/api/capacidad/9999
+
+### ============================================
+### HU3 - LISTAR CAPACIDADES CON ORDENAMIENTO
+### Microservicio Capacidad - Puerto 8082
+### ============================================
+
+### HU3 - Listar capacidades ordenadas por NOMBRE Ascendente (A-Z)
+### Debería salir: Backend Java -> Cloud Specialist -> Python Data
+GET http://localhost:8082/api/capacidad?page=0&size=10&sort=nombre&order=asc
+
+### HU3 - Listar capacidades ordenadas por NOMBRE Descendente (Z-A)
+### Debería salir: Python Data -> Cloud Specialist -> Backend Java
+GET http://localhost:8082/api/capacidad?page=0&size=10&sort=nombre&order=desc
+
+### HU3 - Listar capacidades ordenadas por CANTIDAD de tecnologías Ascendente (Menos a Más)
+### Debería salir: Backend Java (3) -> Python Data (4) -> Cloud Specialist (5)
+GET http://localhost:8082/api/capacidad?page=0&size=10&sort=cantidad&order=asc
+
+### HU3 - Listar capacidades ordenadas por CANTIDAD de tecnologías Descendente (Más a Menos)
+### Debería salir: Cloud Specialist (5) -> Python Data (4) -> Backend Java (3)
+GET http://localhost:8082/api/capacidad?page=0&size=10&sort=cantidad&order=desc
+
+### HU3 - Paginación: Primera página con tamaño 2
+GET http://localhost:8082/api/capacidad?page=0&size=2&sort=nombre&order=asc
+
+### HU3 - Paginación: Segunda página con tamaño 2
+GET http://localhost:8082/api/capacidad?page=1&size=2&sort=nombre&order=asc
+
+### ============================================
+### HU4 - CREAR BOOTCAMP
+### Microservicio Bootcamp - Puerto 8083
+### ============================================
+
+### HU4 - Crear Bootcamp 1: Java Fullstack (2 capacidades)
+POST http://localhost:8083/api/bootcamp
+Content-Type: application/json
+
+{
+  "nombre": "Bootcamp Java Fullstack",
+  "descripcion": "Bootcamp intensivo de desarrollo fullstack",
+  "fechaLanzamiento": "2026-03-01",
+  "duracionSemanas": 12,
+  "capacidadesIds": [1, 2]
+}
+
+### HU4 - Crear Bootcamp 2: Backend Especializado (1 capacidad)
+POST http://localhost:8083/api/bootcamp
+Content-Type: application/json
+
+{
+  "nombre": "Bootcamp Backend Especializado",
+  "descripcion": "Especialización en desarrollo backend",
+  "fechaLanzamiento": "2026-04-01",
+  "duracionSemanas": 8,
+  "capacidadesIds": [1]
+}
+
+### HU4 - Crear Bootcamp 3: DevOps Completo (4 capacidades)
+POST http://localhost:8083/api/bootcamp
+Content-Type: application/json
+
+{
+  "nombre": "Bootcamp Completo DevOps",
+  "descripcion": "Bootcamp completo de tecnologías DevOps",
+  "fechaLanzamiento": "2026-05-01",
+  "duracionSemanas": 16,
+  "capacidadesIds": [1, 2, 3, 4]
+}
+
+### HU4 - Crear Bootcamp 4: Python Avanzado (3 capacidades)
+POST http://localhost:8083/api/bootcamp
+Content-Type: application/json
+
+{
+  "nombre": "Bootcamp Python Avanzado",
+  "descripcion": "Especialización en Python y ciencia de datos",
+  "fechaLanzamiento": "2026-06-01",
+  "duracionSemanas": 10,
+  "capacidadesIds": [2, 3, 4]
+}
+
+### HU4 - Validación: Crear bootcamp sin capacidades (debe fallar)
+POST http://localhost:8083/api/bootcamp
+Content-Type: application/json
+
+{
+  "nombre": "Bootcamp Sin Capacidades",
+  "descripcion": "Este debe fallar",
+  "fechaLanzamiento": "2026-03-01",
+  "duracionSemanas": 12,
+  "capacidadesIds": []
+}
+
+### HU4 - Validación: Crear bootcamp con más de 4 capacidades (debe fallar)
+POST http://localhost:8083/api/bootcamp
+Content-Type: application/json
+
+{
+  "nombre": "Bootcamp Exceso Capacidades",
+  "descripcion": "Este debe fallar",
+  "fechaLanzamiento": "2026-03-01",
+  "duracionSemanas": 12,
+  "capacidadesIds": [1, 2, 3, 4, 5]
+}
+
+### HU4 - Consultar bootcamp por ID
+GET http://localhost:8083/api/bootcamp/1
+
+### HU4 - Consultar bootcamp inexistente (debe retornar 404)
+GET http://localhost:8083/api/bootcamp/9999
+
+### ============================================
+### HU5 - LISTAR BOOTCAMPS CON ORDENAMIENTO
+### Microservicio Bootcamp - Puerto 8083
+### ============================================
+
+### HU5 - Listar bootcamps ordenados por NOMBRE Ascendente (por defecto)
+GET http://localhost:8083/api/bootcamp?page=0&size=10
+
+### HU5 - Listar bootcamps ordenados por NOMBRE Descendente (Z-A)
+GET http://localhost:8083/api/bootcamp?page=0&size=10&sort=nombre&order=desc
+
+### HU5 - Listar bootcamps ordenados por CANTIDAD de capacidades Ascendente (Menos a Más)
+GET http://localhost:8083/api/bootcamp?page=0&size=10&sort=cantCapacidades&order=asc
+
+### HU5 - Listar bootcamps ordenados por CANTIDAD de capacidades Descendente (Más a Menos)
+GET http://localhost:8083/api/bootcamp?page=0&size=10&sort=cantCapacidades&order=desc
+
+### HU5 - Paginación: Primera página con tamaño 2
+GET http://localhost:8083/api/bootcamp?page=0&size=2&sort=nombre&order=asc
+
+### HU5 - Paginación: Segunda página con tamaño 2
+GET http://localhost:8083/api/bootcamp?page=1&size=2&sort=nombre&order=asc
+
+### ============================================
+### HU6 - DELETE BOOTCAMP CON CASCADE CONDICIONAL
+### Microservicio Bootcamp - Puerto 8083
+### Elimina bootcamp y sus capacidades/tecnologías solo si no están referenciadas
+### ============================================
+
+### HU6 - PREPARACIÓN: Crear bootcamps específicos para prueba de eliminación
+
+### HU6 - Crear Bootcamp Test A con capacidades [1, 2]
+POST http://localhost:8083/api/bootcamp
+Content-Type: application/json
+
+{
+  "nombre": "Bootcamp Test A",
+  "descripcion": "Bootcamp para prueba de eliminación A",
+  "fechaLanzamiento": "2026-07-01",
+  "duracionSemanas": 8,
+  "capacidadesIds": [1, 2]
+}
+
+### HU6 - Crear Bootcamp Test B con capacidades [2, 3]
+POST http://localhost:8083/api/bootcamp
+Content-Type: application/json
+
+{
+  "nombre": "Bootcamp Test B",
+  "descripcion": "Bootcamp para prueba de eliminación B",
+  "fechaLanzamiento": "2026-08-01",
+  "duracionSemanas": 10,
+  "capacidadesIds": [2, 3]
+}
+
+### HU6 - Crear Bootcamp Test C con capacidad única [4]
+POST http://localhost:8083/api/bootcamp
+Content-Type: application/json
+
+{
+  "nombre": "Bootcamp Test C",
+  "descripcion": "Bootcamp para prueba de eliminación C - capacidad única",
+  "fechaLanzamiento": "2026-09-01",
+  "duracionSemanas": 6,
+  "capacidadesIds": [4]
+}
+
+### HU6 - PASO 1: Listar todos los bootcamps antes de eliminar
+GET http://localhost:8083/api/bootcamp
+
+### HU6 - PASO 2: Listar todas las capacidades antes de eliminar
+GET http://localhost:8082/api/capacidad
+
+### HU6 - PASO 3: Eliminar Bootcamp Test C (debe eliminar capacidad 4 si es única)
+### NOTA: Reemplazar {id} con el ID real que retornó la creación del Bootcamp Test C
+DELETE http://localhost:8083/api/bootcamp/16
+
+### HU6 - PASO 4: Verificar que Bootcamp Test C fue eliminado (debe retornar 404)
+### NOTA: Reemplazar {id} con el ID del bootcamp eliminado
+GET http://localhost:8083/api/bootcamp/16
+
+### HU6 - PASO 5: Verificar si capacidad 4 fue eliminada (si era única)
+GET http://localhost:8082/api/capacidad/4
+
+### HU6 - PASO 6: Eliminar Bootcamp Test A (debe eliminar capacidad 1, pero NO capacidad 2)
+### NOTA: Reemplazar {id} con el ID real que retornó la creación del Bootcamp Test A
+DELETE http://localhost:8083/api/bootcamp/8
+
+### HU6 - PASO 7: Verificar capacidad 1 eliminada (solo usada por Bootcamp A)
+GET http://localhost:8082/api/capacidad/1
+
+### HU6 - PASO 8: Verificar capacidad 2 existente (compartida con Bootcamp B)
+GET http://localhost:8082/api/capacidad/2
+
+### HU6 - PASO 9: Verificar Bootcamp Test B sigue existiendo con capacidad 2
+### NOTA: Reemplazar {id} con el ID real del Bootcamp Test B
+GET http://localhost:8083/api/bootcamp/6
+
+### HU6 - PASO 10: Listar todos los bootcamps después de eliminaciones
+GET http://localhost:8083/api/bootcamp
+
+### HU6 - PASO 11: Listar todas las capacidades después de eliminaciones
+GET http://localhost:8082/api/capacidad
+
+### HU6 - Validación: Eliminar bootcamp inexistente (debe retornar 404)
+DELETE http://localhost:8083/api/bootcamp/9999
+
+### HU6 - Eliminar capacidad manualmente (prueba directa)
+### NOTA: Reemplazar {id} con un ID válido de capacidad
+DELETE http://localhost:8082/api/capacidad/4
+
+### HU6 - Validación: Eliminar capacidad inexistente (debe retornar 404)
+DELETE http://localhost:8082/api/capacidad/9999
+
+### HU6 - Eliminar tecnología manualmente (prueba directa)
+### NOTA: Reemplazar {id} con un ID válido de tecnología
+DELETE http://localhost:8081/api/tecnologia/5
+
+### HU6 - Validación: Eliminar tecnología inexistente (debe retornar 404)
+DELETE http://localhost:8081/api/tecnologia/9999
+
+### ============================================
+### VERIFICACIÓN FINAL - ESTADO DEL SISTEMA
+### ============================================
+
+### Verificación Final: Todos los bootcamps
+GET http://localhost:8083/api/bootcamp
+
+### Verificación Final: Todas las capacidades
+GET http://localhost:8082/api/capacidad
+
+### Verificación Final: Todas las tecnologías
+GET http://localhost:8081/api/tecnologia/2
+
+### ============================================
+### HU7 - INSCRIPCIÓN DE PERSONAS EN BOOTCAMPS
+### Microservicio Bootcamp - Puerto 8083
+### ============================================
+
+### HU7 - CREAR PERSONAS
+
+### HU7 - Crear Persona 1: Juan Pérez
+POST http://localhost:8083/api/persona
+Content-Type: application/json
+
+{
+  "nombre": "Juan",
+  "apellido": "Pérez",
+  "email": "juan.perez@example.com",
+  "documento": "1234567890"
+}
+
+### HU7 - Crear Persona 2: María García
+POST http://localhost:8083/api/persona
+Content-Type: application/json
+
+{
+  "nombre": "María",
+  "apellido": "García",
+  "email": "maria.garcia@example.com",
+  "documento": "0987654321"
+}
+
+### HU7 - Crear Persona 3: Carlos López
+POST http://localhost:8083/api/persona
+Content-Type: application/json
+
+{
+  "nombre": "Carlos",
+  "apellido": "López",
+  "email": "carlos.lopez@example.com",
+  "documento": "1122334455"
+}
+
+### HU7 - Validación: Crear persona con email duplicado (debe fallar)
+POST http://localhost:8083/api/persona
+Content-Type: application/json
+
+{
+  "nombre": "Pedro",
+  "apellido": "Ramírez",
+  "email": "juan.perez@example.com",
+  "documento": "9988776655"
+}
+
+### HU7 - Validación: Crear persona con documento duplicado (debe fallar)
+POST http://localhost:8083/api/persona
+Content-Type: application/json
+
+{
+  "nombre": "Ana",
+  "apellido": "Martínez",
+  "email": "ana.martinez@example.com",
+  "documento": "1234567890"
+}
+
+### HU7 - Consultar Persona por ID
+### NOTA: Reemplazar {id} con el ID de la persona creada
+GET http://localhost:8083/api/persona/1
+
+### HU7 - Consultar persona inexistente (debe retornar 404)
+GET http://localhost:8083/api/persona/9999
+
+### HU7 - CREAR BOOTCAMPS PARA PRUEBAS DE INSCRIPCIÓN
+
+### HU7 - Bootcamp para inscripción 1 (01/Mar/2026 - 12 semanas)
+### Fecha inicio: 2026-03-01, Fecha fin: 2026-05-24 (12 semanas)
+POST http://localhost:8083/api/bootcamp
+Content-Type: application/json
+
+{
+  "nombre": "Bootcamp Java Spring 2026",
+  "descripcion": "Bootcamp de desarrollo backend con Java y Spring",
+  "fechaLanzamiento": "2026-03-01",
+  "duracionSemanas": 12,
+  "capacidadesIds": [1, 2]
+}
+
+### HU7 - Bootcamp para inscripción 2 (01/Jun/2026 - 8 semanas) - NO SE SOLAPA
+### Fecha inicio: 2026-06-01, Fecha fin: 2026-07-27 (8 semanas)
+POST http://localhost:8083/api/bootcamp
+Content-Type: application/json
+
+{
+  "nombre": "Bootcamp Python Data 2026",
+  "descripcion": "Bootcamp de análisis de datos con Python",
+  "fechaLanzamiento": "2026-06-01",
+  "duracionSemanas": 8,
+  "capacidadesIds": [3]
+}
+
+### HU7 - Bootcamp para inscripción 3 (15/Abr/2026 - 6 semanas) - SE SOLAPA CON BOOTCAMP 1
+### Fecha inicio: 2026-04-15, Fecha fin: 2026-05-27 (6 semanas)
+### Este bootcamp SOLAPA con Bootcamp 1 (que termina el 24/May)
+POST http://localhost:8083/api/bootcamp
+Content-Type: application/json
+
+{
+  "nombre": "Bootcamp Cloud AWS 2026",
+  "descripcion": "Bootcamp de arquitectura cloud con AWS",
+  "fechaLanzamiento": "2026-04-15",
+  "duracionSemanas": 6,
+  "capacidadesIds": [2]
+}
+
+### HU7 - Bootcamp para inscripción 4 (01/Ago/2026 - 10 semanas) - NO SE SOLAPA
+### Fecha inicio: 2026-08-01, Fecha fin: 2026-10-10 (10 semanas)
+POST http://localhost:8083/api/bootcamp
+Content-Type: application/json
+
+{
+  "nombre": "Bootcamp Docker Kubernetes 2026",
+  "descripcion": "Bootcamp de contenedores y orquestación",
+  "fechaLanzamiento": "2026-08-01",
+  "duracionSemanas": 10,
+  "capacidadesIds": [2, 3]
+}
+
+### HU7 - Bootcamp para inscripción 5 (15/Oct/2026 - 8 semanas) - NO SE SOLAPA
+### Fecha inicio: 2026-10-15, Fecha fin: 2026-12-10 (8 semanas)
+POST http://localhost:8083/api/bootcamp
+Content-Type: application/json
+
+{
+  "nombre": "Bootcamp Microservicios 2026",
+  "descripcion": "Bootcamp de arquitectura de microservicios",
+  "fechaLanzamiento": "2026-10-15",
+  "duracionSemanas": 8,
+  "capacidadesIds": [1]
+}
+
+### HU7 - Bootcamp para inscripción 6 (01/Ene/2027 - 12 semanas) - NO SE SOLAPA
+### Fecha inicio: 2027-01-01, Fecha fin: 2027-03-26 (12 semanas)
+POST http://localhost:8083/api/bootcamp
+Content-Type: application/json
+
+{
+  "nombre": "Bootcamp DevOps 2027",
+  "descripcion": "Bootcamp de prácticas DevOps y CI/CD",
+  "fechaLanzamiento": "2027-01-01",
+  "duracionSemanas": 12,
+  "capacidadesIds": [2, 4]
+}
+
+### HU7 - INSCRIPCIONES
+
+### HU7 - Inscripción 1: Juan Pérez en Bootcamp Java Spring (éxito esperado)
+### NOTA: Reemplazar {personaId} y {bootcampId} con los IDs reales
+POST http://localhost:8083/api/inscripcion
+Content-Type: application/json
+
+{
+  "personaId": 1,
+  "bootcampId": 17
+}
+
+### HU7 - Validación: Intentar inscribir Juan en Bootcamp Cloud que SE SOLAPA (debe fallar)
+### El Bootcamp Cloud (15/Abr - 27/May) solapa con Bootcamp Java (01/Mar - 24/May)
+### NOTA: Reemplazar IDs con valores reales
+POST http://localhost:8083/api/inscripcion
+Content-Type: application/json
+
+{
+  "personaId": 1,
+  "bootcampId": 19
+}
+
+### HU7 - Inscripción 2: Juan Pérez en Bootcamp Python (éxito - NO solapa)
+### Python: 01/Jun - 27/Jul NO solapa con Java: 01/Mar - 24/May
+### NOTA: Reemplazar IDs con valores reales
+POST http://localhost:8083/api/inscripcion
+Content-Type: application/json
+
+{
+  "personaId": 1,
+  "bootcampId": 18
+}
+
+### HU7 - Inscripción 3: Juan Pérez en Bootcamp Docker (éxito - NO solapa)
+### Docker: 01/Ago - 10/Oct NO solapa con anteriores
+### NOTA: Reemplazar IDs con valores reales
+POST http://localhost:8083/api/inscripcion
+Content-Type: application/json
+
+{
+  "personaId": 1,
+  "bootcampId": 20
+}
+
+### HU7 - Inscripción 4: Juan Pérez en Bootcamp Microservicios (éxito - NO solapa)
+### Microservicios: 15/Oct - 10/Dic NO solapa con Docker que termina 10/Oct
+### NOTA: Reemplazar IDs con valores reales
+POST http://localhost:8083/api/inscripcion
+Content-Type: application/json
+
+{
+  "personaId": 1,
+  "bootcampId": 21
+}
+
+### HU7 - Inscripción 5: Juan Pérez en Bootcamp DevOps (éxito - NO solapa)
+### DevOps: 01/Ene/2027 - 26/Mar/2027 NO solapa con Microservicios que termina 10/Dic/2026
+### NOTA: Reemplazar IDs con valores reales
+POST http://localhost:8083/api/inscripcion
+Content-Type: application/json
+
+{
+  "personaId": 1,
+  "bootcampId": 10
+}
+
+### HU7 - Validación: Intentar 6ta inscripción para Juan (debe fallar - máximo 5)
+### Crear un bootcamp adicional para la prueba
+POST http://localhost:8083/api/bootcamp
+Content-Type: application/json
+
+{
+  "nombre": "Bootcamp Extra1 2027",
+  "descripcion": "Bootcamp extra para probar límite de 5 inscripciones",
+  "fechaLanzamiento": "2027-04-01",
+  "duracionSemanas": 8,
+  "capacidadesIds": [3]
+}
+
+### HU7 - Intentar inscribir Juan en el 6to bootcamp (debe fallar)
+### NOTA: Reemplazar IDs con valores reales
+POST http://localhost:8083/api/inscripcion
+Content-Type: application/json
+
+{
+  "personaId": 1,
+  "bootcampId": 23
+}
+
+### HU7 - Inscripción de María en Bootcamp Java (éxito - persona diferente)
+### NOTA: Reemplazar IDs con valores reales
+POST http://localhost:8083/api/inscripcion
+Content-Type: application/json
+
+{
+  "personaId": 2,
+  "bootcampId": 17
+}
+
+### HU7 - Inscripción de Carlos en Bootcamp Cloud (éxito)
+### NOTA: Reemplazar IDs con valores reales
+POST http://localhost:8083/api/inscripcion
+Content-Type: application/json
+
+{
+  "personaId": 3,
+  "bootcampId": 19
+}
+
+### HU7 - Validación: Inscribir persona inexistente (debe fallar)
+POST http://localhost:8083/api/inscripcion
+Content-Type: application/json
+
+{
+  "personaId": 9999,
+  "bootcampId": 5
+}
+
+### HU7 - Validación: Inscribir en bootcamp inexistente (debe fallar)
+POST http://localhost:8083/api/inscripcion
+Content-Type: application/json
+
+{
+  "personaId": 1,
+  "bootcampId": 9999
+}
+
+### HU7 - CONSULTAR INSCRIPCIONES
+
+### HU7 - Consultar inscripción por ID
+### NOTA: Reemplazar {id} con el ID de una inscripción creada
+GET http://localhost:8083/api/inscripcion/1
+
+### HU7 - Consultar inscripción inexistente (debe retornar 404)
+GET http://localhost:8083/api/inscripcion/9999
+
+### HU7 - Listar todas las inscripciones de Juan Pérez (debe retornar 5)
+### NOTA: Reemplazar {personaId} con el ID de Juan
+GET http://localhost:8083/api/inscripcion/persona/1
+
+### HU7 - Listar todas las inscripciones de María García
+### NOTA: Reemplazar {personaId} con el ID de María
+GET http://localhost:8083/api/inscripcion/persona/2
+
+### HU7 - Listar todas las inscripciones de Carlos López
+### NOTA: Reemplazar {personaId} con el ID de Carlos
+GET http://localhost:8083/api/inscripcion/persona/3
+
+### ============================================
+### HU8 - CONSULTA COMPLETA DE BOOTCAMP
+### ============================================
+
+### HU8 - ESCENARIO: Obtener información completa del bootcamp
+### El sistema debe retornar:
+### - Toda la información del bootcamp (id, nombre, descripción, fechaLanzamiento, duracionSemanas)
+### - Nombre y correo de cada persona inscrita al bootcamp
+### - Cada una de las capacidades con sus detalles
+### - Cada una de las tecnologías asociadas al bootcamp
+
+### HU8 - PREPARACIÓN: Crear bootcamp para probar detalle completo
+POST http://localhost:8083/api/bootcamp
+Content-Type: application/json
+
+{
+  "nombre": "Bootcamp HU8 Full Stack 2026",
+  "descripcion": "Bootcamp completo para validar información detallada con personas, capacidades y tecnologías",
+  "fechaLanzamiento": "2026-11-01",
+  "duracionSemanas": 12,
+  "capacidadesIds": [1, 2]
+}
+
+### HU8 - Crear personas para inscribir en el bootcamp
+POST http://localhost:8083/api/persona
+Content-Type: application/json
+
+{
+  "nombre": "Ana",
+  "apellido": "Martínez",
+  "email": "ana.martinez@pragma.com",
+  "documento": "DOC-HU8-001"
+}
+
+### HU8 - Crear segunda persona
+POST http://localhost:8083/api/persona
+Content-Type: application/json
+
+{
+  "nombre": "Luis",
+  "apellido": "Fernández",
+  "email": "luis.fernandez@pragma.com",
+  "documento": "DOC-HU8-002"
+}
+
+### HU8 - Crear tercera persona
+POST http://localhost:8083/api/persona
+Content-Type: application/json
+
+{
+  "nombre": "Carmen",
+  "apellido": "Rodríguez",
+  "email": "carmen.rodriguez@pragma.com",
+  "documento": "DOC-HU8-003"
+}
+
+### HU8 - Inscribir Ana en el bootcamp
+### NOTA: Reemplazar IDs con valores reales (personaId y bootcampId)
+POST http://localhost:8083/api/inscripcion
+Content-Type: application/json
+
+{
+  "personaId": 4,
+  "bootcampId": 24
+}
+
+### HU8 - Inscribir Luis en el bootcamp
+### NOTA: Reemplazar IDs con valores reales
+POST http://localhost:8083/api/inscripcion
+Content-Type: application/json
+
+{
+  "personaId": 5,
+  "bootcampId": 24
+}
+
+### HU8 - Inscribir Carmen en el bootcamp
+### NOTA: Reemplazar IDs con valores reales
+POST http://localhost:8083/api/inscripcion
+Content-Type: application/json
+
+{
+  "personaId": 6,
+  "bootcampId": 24
+}
+
+### HU8 - CONSULTAR BOOTCAMP COMPLETO (Prueba Principal)
+### Endpoint: GET /api/bootcamp/{id}/completo
+### Respuesta esperada debe incluir:
+### - Información del bootcamp
+### - personasInscritas: [{"nombre": "Ana", "apellido": "Martínez", "email": "ana.martinez@pragma.com"}, ...]
+### - capacidades: [{"id": 1, "nombre": "...", "tecnologias": [...]}, ...]
+### - tecnologias: [{"id": 1, "nombre": "..."}, ...] (tecnologías únicas de todas las capacidades)
+### NOTA: Reemplazar {id} con el ID del bootcamp creado
+GET http://localhost:8083/api/bootcamp/24/completo
+
+### HU8 - Validación: Consultar bootcamp existente sin inscripciones
+### Crear bootcamp sin inscripciones para validar que retorna lista vacía
+POST http://localhost:8083/api/bootcamp
+Content-Type: application/json
+
+{
+  "nombre": "Bootcamp HU8 Sin Inscritos",
+  "descripcion": "Bootcamp para validar respuesta sin personas inscritas",
+  "fechaLanzamiento": "2026-12-01",
+  "duracionSemanas": 8,
+  "capacidadesIds": [3]
+}
+
+### HU8 - Consultar bootcamp sin inscripciones (debe retornar personasInscritas: [])
+### NOTA: Reemplazar {id} con el ID del bootcamp creado sin inscripciones
+GET http://localhost:8083/api/bootcamp/25/completo
+
+### HU8 - Validación: Consultar bootcamp con múltiples capacidades
+### El bootcamp debe retornar todas las capacidades con sus tecnologías
+### NOTA: Reemplazar {id} con un bootcamp que tenga 3 o 4 capacidades
+GET http://localhost:8083/api/bootcamp/10/completo
+
+### HU8 - Validación: Consultar bootcamp inexistente (debe retornar 404)
+GET http://localhost:8083/api/bootcamp/99999/completo
+
+### HU8 - VALIDACIÓN DE DATOS ESPERADOS:
+### La respuesta JSON debe tener esta estructura:
+### {
+###   "id": 24,
+###   "nombre": "Bootcamp HU8 Full Stack 2026",
+###   "descripcion": "Bootcamp completo para validar información detallada...",
+###   "fechaLanzamiento": "2026-11-01",
+###   "duracionSemanas": 12,
+###   "personasInscritas": [
+###     {
+###       "nombre": "Ana",
+###       "apellido": "Martínez",
+###       "email": "ana.martinez@pragma.com"
+###     },
+###     {
+###       "nombre": "Luis",
+###       "apellido": "Fernández",
+###       "email": "luis.fernandez@pragma.com"
+###     },
+###     {
+###       "nombre": "Carmen",
+###       "apellido": "Rodríguez",
+###       "email": "carmen.rodriguez@pragma.com"
+###     }
+###   ],
+###   "capacidades": [
+###     {
+###       "id": 1,
+###       "nombre": "Backend con Spring Boot",
+###       "descripcion": "...",
+###       "tecnologias": [
+###         {"id": 1, "nombre": "Java"},
+###         {"id": 2, "nombre": "Spring Boot"},
+###         {"id": 3, "nombre": "Hibernate"}
+###       ]
+###     },
+###     {
+###       "id": 2,
+###       "nombre": "Frontend con React",
+###       "descripcion": "...",
+###       "tecnologias": [
+###         {"id": 4, "nombre": "JavaScript"},
+###         {"id": 5, "nombre": "React"},
+###         {"id": 6, "nombre": "Redux"}
+###       ]
+###     }
+###   ],
+###   "tecnologias": [
+###     {"id": 1, "nombre": "Java"},
+###     {"id": 2, "nombre": "Spring Boot"},
+###     {"id": 3, "nombre": "Hibernate"},
+###     {"id": 4, "nombre": "JavaScript"},
+###     {"id": 5, "nombre": "React"},
+###     {"id": 6, "nombre": "Redux"}
+###   ]
+### }
+
+### HU8 - CASOS DE PRUEBA ADICIONALES
+
+### HU8 - Consultar bootcamp con 1 persona inscrita
+### Útil para validar que funciona con diferentes cantidades
+### (Usar bootcamp existente y agregar solo 1 inscripción)
+
+### HU8 - Consultar bootcamp con capacidad mínima (1 capacidad)
+POST http://localhost:8083/api/bootcamp
+Content-Type: application/json
+
+{
+  "nombre": "Bootcamp HU8 Especializado",
+  "descripcion": "Bootcamp con una sola capacidad",
+  "fechaLanzamiento": "2027-01-15",
+  "duracionSemanas": 8,
+  "capacidadesIds": [1]
+}
+
+### HU8 - Consultar bootcamp especializado (1 capacidad)
+### NOTA: Reemplazar {id} con el ID del bootcamp especializado
+GET http://localhost:8083/api/bootcamp/26/completo
+
+### HU8 - Consultar bootcamp con capacidad máxima (4 capacidades)
+POST http://localhost:8083/api/bootcamp
+Content-Type: application/json
+
+{
+  "nombre": "Bootcamp HU8 Completo",
+  "descripcion": "Bootcamp con todas las capacidades permitidas",
+  "fechaLanzamiento": "2027-02-01",
+  "duracionSemanas": 16,
+  "capacidadesIds": [1, 2, 3, 4]
+}
+
+### HU8 - Consultar bootcamp completo (4 capacidades)
+### Este debe retornar TODAS las tecnologías de las 4 capacidades (sin duplicados)
+### NOTA: Reemplazar {id} con el ID del bootcamp con 4 capacidades
+GET http://localhost:8083/api/bootcamp/27/completo
+
+### HU8 - RESUMEN DE VALIDACIONES HU8
+### ✅ 1. Endpoint retorna información completa del bootcamp (200 OK)
+### ✅ 2. personasInscritas contiene nombre, apellido y email de cada inscrito ACTIVO
+### ✅ 3. personasInscritas es un array vacío [] si no hay inscripciones
+### ✅ 4. capacidades contiene todas las capacidades del bootcamp con sus tecnologías
+### ✅ 5. tecnologias contiene todas las tecnologías únicas de las capacidades (sin duplicados)
+### ✅ 6. Bootcamp con 1 capacidad funciona correctamente
+### ✅ 7. Bootcamp con 4 capacidades funciona correctamente
+### ✅ 8. Bootcamp inexistente retorna 404 NOT FOUND
+### ✅ 9. La respuesta JSON tiene la estructura correcta según requisitos
+
+### ============================================
+### FIN DE PRUEBAS COMPLETAS (HU1-HU8)
+### ============================================
+
+

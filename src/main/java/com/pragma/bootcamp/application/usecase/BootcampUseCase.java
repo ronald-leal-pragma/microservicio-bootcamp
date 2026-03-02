@@ -1,0 +1,302 @@
+package com.pragma.bootcamp.application.usecase;
+
+import com.pragma.bootcamp.application.dtos.responses.BootcampCompleteResponse;
+import com.pragma.bootcamp.application.dtos.responses.BootcampDetalleCompletoResponse;
+import com.pragma.bootcamp.application.dtos.responses.CapacidadCompleteResponse;
+import com.pragma.bootcamp.application.dtos.responses.PersonaInscritaDTO;
+import com.pragma.bootcamp.application.dtos.responses.TecnologiaResponse;
+import com.pragma.bootcamp.domain.models.Bootcamp;
+import com.pragma.bootcamp.domain.models.BootcampReporte;
+import com.pragma.bootcamp.domain.ports.in.IBootcampServicePort;
+import com.pragma.bootcamp.domain.ports.out.IBootcampPersistencePort;
+import com.pragma.bootcamp.domain.ports.out.IBootcampReportePersistencePort;
+import com.pragma.bootcamp.domain.ports.out.ICapacidadServicePort;
+import com.pragma.bootcamp.infrastructure.r2dbc.IInscripcionRepository;
+import com.pragma.bootcamp.infrastructure.r2dbc.IPersonaRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+
+import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class BootcampUseCase implements IBootcampServicePort {
+
+    private final IBootcampPersistencePort bootcampPersistencePort;
+    private final ICapacidadServicePort capacidadServicePort;
+    private final IBootcampReportePersistencePort reportePersistencePort;
+    private final IInscripcionRepository inscripcionRepository;
+    private final IPersonaRepository personaRepository;
+
+    @Override
+    public Mono<Bootcamp> saveBootcamp(Bootcamp bootcamp) {
+        log.info("UseCase - Recibido bootcamp: {}", bootcamp);
+        // Validate capacidades count (mínimo 1, máximo 4)
+        if (bootcamp.getCapacidadesIds() == null || bootcamp.getCapacidadesIds().isEmpty() || bootcamp.getCapacidadesIds().size() > 4) {
+            return Mono.error(new IllegalArgumentException("Un bootcamp debe tener entre 1 y 4 capacidades asociadas"));
+        }
+
+        // Validate each capacidad exists in microservicio-capacidad
+        return Flux.fromIterable(bootcamp.getCapacidadesIds())
+                .flatMap(capacidadServicePort::validateCapacidadExists)
+                .then(bootcampPersistencePort.save(bootcamp))
+                .doOnNext(saved -> log.info("UseCase - Bootcamp guardado: {}", saved))
+                .flatMap(savedBootcamp -> {
+                    // Generar reporte de forma asíncrona (no bloqueante)
+                    generarReporteAsync(savedBootcamp)
+                            .subscribeOn(Schedulers.boundedElastic())
+                            .subscribe(
+                                    reporte -> log.info("UseCase - Reporte generado exitosamente para bootcamp ID: {}", reporte.getBootcampId()),
+                                    error -> log.error("UseCase - Error al generar reporte: {}", error.getMessage())
+                            );
+                    
+                    // Retornar el bootcamp inmediatamente sin esperar el reporte
+                    return Mono.just(savedBootcamp);
+                });
+    }
+
+    private Mono<BootcampReporte> generarReporteAsync(Bootcamp bootcamp) {
+        log.info("UseCase - Iniciando generación de reporte para bootcamp ID: {}", bootcamp.getId());
+        
+        // Obtener capacidades para contar tecnologías
+        return capacidadServicePort.getCapacidadesByIds(bootcamp.getCapacidadesIds())
+                .collectList()
+                .flatMap(capacidades -> {
+                    // Calcular cantidad de tecnologías únicas
+                    Set<Long> tecnologiasUnicas = capacidades.stream()
+                            .flatMap(cap -> cap.getTecnologias() != null ? 
+                                    cap.getTecnologias().stream().map(tech -> tech.getId()) : 
+                                    Set.<Long>of().stream())
+                            .collect(Collectors.toSet());
+                    
+                    // Contar personas inscritas (activas) en este bootcamp
+                    return inscripcionRepository.countByBootcampIdAndEstadoActiva(bootcamp.getId())
+                            .map(count -> {
+                                BootcampReporte reporte = BootcampReporte.builder()
+                                        .bootcampId(bootcamp.getId())
+                                        .bootcampNombre(bootcamp.getNombre())
+                                        .bootcampDescripcion(bootcamp.getDescripcion())
+                                        .fechaLanzamiento(bootcamp.getFechaLanzamiento())
+                                        .duracionSemanas(bootcamp.getDuracionSemanas())
+                                        .cantidadCapacidades(bootcamp.getCapacidadesIds().size())
+                                        .cantidadTecnologias(tecnologiasUnicas.size())
+                                        .cantidadPersonasInscritas(count.intValue())
+                                        .fechaRegistroReporte(LocalDateTime.now())
+                                        .build();
+                                
+                                log.info("UseCase - Reporte creado: Bootcamp={}, Capacidades={}, Tecnologías={}, Personas={}",
+                                        reporte.getBootcampNombre(), 
+                                        reporte.getCantidadCapacidades(),
+                                        reporte.getCantidadTecnologias(),
+                                        reporte.getCantidadPersonasInscritas());
+                                
+                                return reporte;
+                            });
+                })
+                .flatMap(reportePersistencePort::saveReporte);
+    }
+
+    @Override
+    public Flux<BootcampCompleteResponse> getAllBootcamps(int page, int size, String sort, String order) {
+        return bootcampPersistencePort.findAll(page, size)
+                .collectList()
+                .flatMapMany(bootcamps -> {
+                    // Enrich with capacidades
+                    return Flux.fromIterable(bootcamps)
+                            .flatMap(bootcamp -> {
+                                if (bootcamp.getCapacidadesIds() == null || bootcamp.getCapacidadesIds().isEmpty()) {
+                                    BootcampCompleteResponse response = new BootcampCompleteResponse();
+                                    response.setId(bootcamp.getId());
+                                    response.setNombre(bootcamp.getNombre());
+                                    response.setDescripcion(bootcamp.getDescripcion());
+                                    response.setFechaLanzamiento(bootcamp.getFechaLanzamiento());
+                                    response.setDuracionSemanas(bootcamp.getDuracionSemanas());
+                                    response.setCapacidades(java.util.Collections.emptyList());
+                                    return Mono.just(response);
+                                }
+
+                                return capacidadServicePort.getCapacidadesByIds(bootcamp.getCapacidadesIds())
+                                        .collectList()
+                                        .map(capacidades -> {
+                                            BootcampCompleteResponse response = new BootcampCompleteResponse();
+                                            response.setId(bootcamp.getId());
+                                            response.setNombre(bootcamp.getNombre());
+                                            response.setDescripcion(bootcamp.getDescripcion());
+                                            response.setFechaLanzamiento(bootcamp.getFechaLanzamiento());
+                                            response.setDuracionSemanas(bootcamp.getDuracionSemanas());
+                                            response.setCapacidades(capacidades);
+                                            return response;
+                                        });
+                            })
+                            .collectList()
+                            .flatMapMany(responses -> {
+                                // Sort
+                                Comparator<BootcampCompleteResponse> comparator;
+                                if ("cantCapacidades".equalsIgnoreCase(sort)) {
+                                    comparator = Comparator.comparing(r -> r.getCapacidades().size());
+                                } else {
+                                    comparator = Comparator.comparing(BootcampCompleteResponse::getNombre, String.CASE_INSENSITIVE_ORDER);
+                                }
+
+                                if ("desc".equalsIgnoreCase(order)) {
+                                    comparator = comparator.reversed();
+                                }
+
+                                return Flux.fromIterable(
+                                        responses.stream()
+                                                .sorted(comparator)
+                                                .collect(Collectors.toList())
+                                );
+                            });
+                });
+    }
+
+    @Override
+    public Mono<Bootcamp> getBootcampById(Long id) {
+        return bootcampPersistencePort.getBootcampById(id);
+    }
+
+    @Override
+    @Transactional
+    public Mono<Void> deleteBootcamp(Long id) {
+        log.info("UseCase: deleteBootcamp - Iniciando eliminación de bootcamp con ID: {}", id);
+        
+        return bootcampPersistencePort.getBootcampById(id)
+                .switchIfEmpty(Mono.error(new RuntimeException("El bootcamp con ID " + id + " no existe")))
+                .flatMap(bootcamp -> {
+                    Set<Long> capacidadesIds = bootcamp.getCapacidadesIds() != null ? 
+                            new HashSet<>(bootcamp.getCapacidadesIds()) : new HashSet<>();
+                    
+                    log.info("UseCase: deleteBootcamp - Bootcamp encontrado: {}, Capacidades asociadas: {}", 
+                            bootcamp.getNombre(), capacidadesIds);
+                    
+                    // Eliminar el bootcamp
+                    return bootcampPersistencePort.deleteBootcamp(id)
+                            .then(Mono.just(capacidadesIds));
+                })
+                .flatMap(capacidadesIds -> {
+                    if (capacidadesIds.isEmpty()) {
+                        log.info("UseCase: deleteBootcamp - No hay capacidades asociadas para verificar");
+                        return Mono.empty();
+                    }
+                    
+                    // Obtener todos los bootcamps restantes
+                    return bootcampPersistencePort.findAllBootcamps()
+                            .collectList()
+                            .flatMap(bootcamps -> {
+                                // Recolectar todas las capacidades referenciadas por otros bootcamps
+                                Set<Long> capacidadesReferenciadas = bootcamps.stream()
+                                        .flatMap(b -> b.getCapacidadesIds() != null ? 
+                                                b.getCapacidadesIds().stream() : Set.<Long>of().stream())
+                                        .collect(Collectors.toSet());
+                                
+                                // Identificar capacidades huérfanas (no referenciadas)
+                                Set<Long> capacidadesHuerfanas = capacidadesIds.stream()
+                                        .filter(capId -> !capacidadesReferenciadas.contains(capId))
+                                        .collect(Collectors.toSet());
+                                
+                                log.info("UseCase: deleteBootcamp - Capacidades a eliminar (huérfanas): {}", capacidadesHuerfanas);
+                                
+                                // Eliminar capacidades huérfanas
+                                return Flux.fromIterable(capacidadesHuerfanas)
+                                        .flatMap(capId -> {
+                                            log.info("UseCase: deleteBootcamp - Eliminando capacidad huérfana con ID: {}", capId);
+                                            return capacidadServicePort.deleteCapacidad(capId)
+                                                    .onErrorResume(e -> {
+                                                        log.warn("UseCase: deleteBootcamp - Error al eliminar capacidad {}: {}", 
+                                                                capId, e.getMessage());
+                                                        return Mono.empty();
+                                                    });
+                                        })
+                                        .then();
+                            });
+                })
+                .then()
+                .doOnSuccess(v -> log.info("UseCase: deleteBootcamp - Bootcamp eliminado exitosamente"))
+                .doOnError(error -> log.error("UseCase: deleteBootcamp - Error: {}", error.getMessage()));
+    }
+
+    @Override
+    public Mono<BootcampDetalleCompletoResponse> getBootcampCompleto(Long id) {
+        log.info("UseCase - Obteniendo detalle completo del bootcamp ID: {}", id);
+        
+        return bootcampPersistencePort.getBootcampById(id)
+                .switchIfEmpty(Mono.error(new RuntimeException("Bootcamp no encontrado con ID: " + id)))
+                .flatMap(bootcamp -> {
+                    log.info("UseCase - Bootcamp encontrado: {}", bootcamp.getNombre());
+                    
+                    // Obtener personas inscritas activas
+                    Mono<List<PersonaInscritaDTO>> personasInscritasMono = inscripcionRepository
+                            .findByBootcampIdAndEstadoActiva(id)
+                            .flatMap(inscripcionEntity -> 
+                                personaRepository.findById(inscripcionEntity.getPersonaId())
+                                    .map(personaEntity -> PersonaInscritaDTO.builder()
+                                            .nombre(personaEntity.getNombre())
+                                            .apellido(personaEntity.getApellido())
+                                            .email(personaEntity.getEmail())
+                                            .build())
+                            )
+                            .collectList();
+                    
+                    // Obtener capacidades con sus tecnologías
+                    Mono<List<CapacidadCompleteResponse>> capacidadesMono = 
+                            capacidadServicePort.getCapacidadesByIds(bootcamp.getCapacidadesIds())
+                                    .map(capacidadSimple -> CapacidadCompleteResponse.builder()
+                                            .id(capacidadSimple.getId())
+                                            .nombre(capacidadSimple.getNombre())
+                                            .descripcion(null) // CapacidadSimpleResponse no tiene descripción
+                                            .tecnologias(capacidadSimple.getTecnologias() != null ?
+                                                    capacidadSimple.getTecnologias().stream()
+                                                            .map(tecSimple -> new TecnologiaResponse(
+                                                                    tecSimple.getId(),
+                                                                    tecSimple.getNombre(),
+                                                                    null)) // TecnologiaSimpleResponse no tiene descripción
+                                                            .collect(Collectors.toList()) :
+                                                    List.of())
+                                            .build())
+                                    .collectList();
+                    
+                    // Combinar todos los datos
+                    return Mono.zip(personasInscritasMono, capacidadesMono)
+                            .map(tuple -> {
+                                List<PersonaInscritaDTO> personasInscritas = tuple.getT1();
+                                List<CapacidadCompleteResponse> capacidades = tuple.getT2();
+                                
+                                // Extraer todas las tecnologías únicas de las capacidades
+                                Set<TecnologiaResponse> tecnologiasUnicas = capacidades.stream()
+                                        .flatMap(cap -> cap.getTecnologias() != null ? 
+                                                cap.getTecnologias().stream() : 
+                                                Set.<TecnologiaResponse>of().stream())
+                                        .collect(Collectors.toSet());
+                                
+                                log.info("UseCase - Bootcamp {}: {} personas inscritas, {} capacidades, {} tecnologías",
+                                        bootcamp.getNombre(), 
+                                        personasInscritas.size(), 
+                                        capacidades.size(),
+                                        tecnologiasUnicas.size());
+                                
+                                return BootcampDetalleCompletoResponse.builder()
+                                        .id(bootcamp.getId())
+                                        .nombre(bootcamp.getNombre())
+                                        .descripcion(bootcamp.getDescripcion())
+                                        .fechaLanzamiento(bootcamp.getFechaLanzamiento())
+                                        .duracionSemanas(bootcamp.getDuracionSemanas())
+                                        .personasInscritas(personasInscritas)
+                                        .capacidades(capacidades)
+                                        .tecnologias(new java.util.ArrayList<>(tecnologiasUnicas))
+                                        .build();
+                            });
+                });
+    }
+}

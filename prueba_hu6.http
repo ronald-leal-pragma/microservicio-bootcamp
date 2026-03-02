@@ -1,0 +1,119 @@
+### HU6 - DELETE Bootcamp con Cascade Condicional
+### Elimina bootcamp y sus capacidades/tecnologías solo si no están referenciadas por otros bootcamps
+
+### PASO 1: Consultar bootcamps existentes
+GET http://localhost:8083/api/bootcamp
+
+### PASO 2: Consultar bootcamp específico con datos completos
+GET http://localhost:8083/api/bootcamp/3
+
+### PASO 3: Consultar capacidades para ver referencias
+GET http://localhost:8082/api/capacidad
+
+### PASO 4: DELETE Bootcamp (probar con ID existente)
+### Debe eliminar: bootcamp + capacidades únicas + tecnologías huérfanas
+### NO debe eliminar: capacidades compartidas con otros bootcamps
+DELETE http://localhost:8083/api/bootcamp/1
+
+### PASO 5: Verificar que el bootcamp fue eliminado (debe retornar 404)
+GET http://localhost:8083/api/bootcamp/4
+
+### PASO 6: Verificar capacidades (algunas deben existir, otras no)
+GET http://localhost:8082/api/capacidad/1
+
+### PASO 7: Verificar todos los bootcamps restantes
+GET http://localhost:8083/api/bootcamp
+
+###
+### ESCENARIO DE PRUEBA COMPLETO
+###
+
+### 1. Crear Bootcamp A con capacidades [1, 2]
+POST http://localhost:8083/api/bootcamp
+Content-Type: application/json
+
+{
+  "nombre": "Bootcamp Test A",
+  "descripcion": "Bootcamp para prueba de eliminación A",
+  "fechaLanzamiento": "2026-03-01",
+  "duracionSemanas": 8,
+  "capacidadesIds": [3, 2]
+}
+
+### 2. Crear Bootcamp B con capacidades [2, 3]
+POST http://localhost:8083/api/bootcamp
+Content-Type: application/json
+
+{
+  "nombre": "Bootcamp Test B",
+  "descripcion": "Bootcamp para prueba de eliminación B",
+  "fechaLanzamiento": "2026-03-15",
+  "duracionSemanas": 10,
+  "capacidadesIds": [2, 3]
+}
+
+### 3. Crear Bootcamp C con capacidad [4] (única)
+POST http://localhost:8083/api/bootcamp
+Content-Type: application/json
+
+{
+  "nombre": "Bootcamp Test C",
+  "descripcion": "Bootcamp para prueba de eliminación C - capacidad única",
+  "fechaLanzamiento": "2026-04-01",
+  "duracionSemanas": 6,
+  "capacidadesIds": [3]
+}
+
+### 4. Listar todos los bootcamps creados
+GET http://localhost:8083/api/bootcamp
+
+### 5. Eliminar Bootcamp C (debe eliminar capacidad 4 si no está en otros bootcamps)
+### Copiar el ID que retornó la creación del Bootcamp C
+DELETE http://localhost:8083/api/bootcamp/16
+
+### 6. Verificar que Bootcamp C fue eliminado (404)
+GET http://localhost:8083/api/bootcamp/15
+
+### 7. Verificar que capacidad 4 fue eliminada (si era única)
+GET http://localhost:8082/api/capacidad/16
+
+### 8. Eliminar Bootcamp A (debe eliminar capacidad 1, pero NO capacidad 2)
+### Copiar el ID que retornó la creación del Bootcamp A
+DELETE http://localhost:8083/api/bootcamp/4
+
+### 9. Verificar capacidad 1 eliminada (solo usada por Bootcamp A)
+GET http://localhost:8082/api/capacidad/1
+
+### 10. Verificar capacidad 2 existente (compartida con Bootcamp B)
+GET http://localhost:8082/api/capacidad/2
+
+### 11. Verificar Bootcamp B sigue existiendo con capacidad 2
+GET http://localhost:8083/api/bootcamp/5
+
+###
+### PRUEBA DE ERROR: Eliminar bootcamp inexistente (404)
+###
+DELETE http://localhost:8083/api/bootcamp/9999
+
+###
+### PRUEBA DIRECTA: Eliminar capacidad manualmente
+###
+DELETE http://localhost:8082/api/capacidad/5
+
+###
+### PRUEBA DIRECTA: Eliminar tecnología manualmente
+###
+DELETE http://localhost:8081/api/tecnologia/1
+
+###
+### VERIFICACIÓN FINAL: Estado completo del sistema
+###
+
+### Todos los bootcamps
+GET http://localhost:8083/api/bootcamp
+
+### Todas las capacidades
+GET http://localhost:8082/api/capacidad
+
+### Una tecnología específica
+GET http://localhost:8081/api/tecnologia/1

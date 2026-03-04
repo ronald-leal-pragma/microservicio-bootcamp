@@ -21,6 +21,7 @@ public class BootcampPersistenceAdapter implements IBootcampPersistencePort {
     private final BootcampEntityMapper bootcampEntityMapper;
 
     @Override
+    @CircuitBreaker(name = SERVICE_OPERATION_DB)
     public Mono<Bootcamp> save(Bootcamp bootcamp) {
         log.info("PersistenceAdapter - Bootcamp recibido para guardar: {}", bootcamp);
         var entity = bootcampEntityMapper.toEntity(bootcamp);
@@ -32,6 +33,7 @@ public class BootcampPersistenceAdapter implements IBootcampPersistencePort {
     }
 
     @Override
+    @CircuitBreaker(name = SERVICE_OPERATION_DB)
     public Flux<Bootcamp> findAll(int page, int size) {
         return bootcampRepository.findAll()
                 .map(bootcampEntityMapper::toDomain);
@@ -47,6 +49,7 @@ public class BootcampPersistenceAdapter implements IBootcampPersistencePort {
     }
 
     @Override
+    @CircuitBreaker(name = SERVICE_OPERATION_DB)
     public Mono<Void> deleteBootcamp(Long id) {
         log.info("PersistenceAdapter - Eliminando bootcamp con ID: {}", id);
         return bootcampRepository.deleteById(id)
@@ -55,8 +58,15 @@ public class BootcampPersistenceAdapter implements IBootcampPersistencePort {
     }
 
     @Override
+    @CircuitBreaker(name = SERVICE_OPERATION_DB)
     public Flux<Bootcamp> findAllBootcamps() {
         return bootcampRepository.findAll()
                 .map(bootcampEntityMapper::toDomain);
+    }
+
+    @Override
+    @CircuitBreaker(name = SERVICE_OPERATION_DB)
+    public Mono<Long> count() {
+        return bootcampRepository.count();
     }
 }

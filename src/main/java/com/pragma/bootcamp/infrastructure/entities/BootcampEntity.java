@@ -1,4 +1,4 @@
-package com.pragma.bootcamp.infrastructure.persistence;
+package com.pragma.bootcamp.infrastructure.entities;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

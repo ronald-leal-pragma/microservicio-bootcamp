@@ -5,7 +5,7 @@ import com.pragma.bootcamp.domain.models.Inscripcion;
 import com.pragma.bootcamp.domain.models.Persona;
 import com.pragma.bootcamp.domain.ports.in.IBootcampServicePort;
 import com.pragma.bootcamp.domain.ports.out.IInscripcionPersistencePort;
-import com.pragma.bootcamp.domain.ports.out.IPersonaPersistencePort;
+import com.pragma.bootcamp.domain.ports.out.IPersonaServicePort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,7 +33,7 @@ class InscripcionUseCaseTest {
     private IInscripcionPersistencePort inscripcionPersistencePort;
 
     @Mock
-    private IPersonaPersistencePort personaPersistencePort;
+    private IPersonaServicePort personaServicePort;
 
     @Mock
     private IBootcampServicePort bootcampServicePort;
@@ -77,7 +77,7 @@ class InscripcionUseCaseTest {
     @DisplayName("Debe inscribir persona en bootcamp exitosamente")
     void inscribirPersonaEnBootcamp_Success() {
         // Arrange
-        when(personaPersistencePort.findById(1L)).thenReturn(Mono.just(persona));
+        when(personaServicePort.findById(1L)).thenReturn(Mono.just(persona));
         when(bootcampServicePort.getBootcampById(1L)).thenReturn(Mono.just(bootcamp));
         when(inscripcionPersistencePort.countInscripcionesActivasByPersonaId(1L)).thenReturn(Mono.just(0L));
         when(inscripcionPersistencePort.findByPersonaIdActivas(1L)).thenReturn(Flux.empty());
@@ -103,7 +103,7 @@ class InscripcionUseCaseTest {
     @DisplayName("Debe fallar si persona no existe")
     void inscribirPersonaEnBootcamp_PersonaNotFound_ShouldFail() {
         // Arrange
-        when(personaPersistencePort.findById(999L)).thenReturn(Mono.empty());
+        when(personaServicePort.findById(999L)).thenReturn(Mono.empty());
 
         // Act
         Mono<Inscripcion> result = inscripcionUseCase.inscribirPersonaEnBootcamp(999L, 1L);
@@ -123,7 +123,7 @@ class InscripcionUseCaseTest {
     @DisplayName("Debe fallar si bootcamp no existe")
     void inscribirPersonaEnBootcamp_BootcampNotFound_ShouldFail() {
         // Arrange
-        when(personaPersistencePort.findById(1L)).thenReturn(Mono.just(persona));
+        when(personaServicePort.findById(1L)).thenReturn(Mono.just(persona));
         when(bootcampServicePort.getBootcampById(999L)).thenReturn(Mono.empty());
 
         // Act
@@ -144,7 +144,7 @@ class InscripcionUseCaseTest {
     @DisplayName("Debe fallar si persona ya tiene 5 inscripciones activas")
     void inscribirPersonaEnBootcamp_MaxInscripciones_ShouldFail() {
         // Arrange
-        when(personaPersistencePort.findById(1L)).thenReturn(Mono.just(persona));
+        when(personaServicePort.findById(1L)).thenReturn(Mono.just(persona));
         when(bootcampServicePort.getBootcampById(1L)).thenReturn(Mono.just(bootcamp));
         when(inscripcionPersistencePort.countInscripcionesActivasByPersonaId(1L)).thenReturn(Mono.just(5L));
 
@@ -183,7 +183,7 @@ class InscripcionUseCaseTest {
                 .estado("ACTIVA")
                 .build();
 
-        when(personaPersistencePort.findById(1L)).thenReturn(Mono.just(persona));
+        when(personaServicePort.findById(1L)).thenReturn(Mono.just(persona));
         when(bootcampServicePort.getBootcampById(1L)).thenReturn(Mono.just(bootcamp));
         when(inscripcionPersistencePort.countInscripcionesActivasByPersonaId(1L)).thenReturn(Mono.just(1L));
         when(inscripcionPersistencePort.findByPersonaIdActivas(1L)).thenReturn(Flux.just(inscripcionExistente));
@@ -208,7 +208,7 @@ class InscripcionUseCaseTest {
     void getInscripcionesByPersonaId_Success() {
         // Arrange
         when(inscripcionPersistencePort.findByPersonaId(1L)).thenReturn(Flux.just(inscripcion));
-        when(personaPersistencePort.findById(1L)).thenReturn(Mono.just(persona));
+        when(personaServicePort.findById(1L)).thenReturn(Mono.just(persona));
         when(bootcampServicePort.getBootcampById(1L)).thenReturn(Mono.just(bootcamp));
 
         // Act
@@ -230,7 +230,7 @@ class InscripcionUseCaseTest {
     void getInscripcionById_Success() {
         // Arrange
         when(inscripcionPersistencePort.findById(1L)).thenReturn(Mono.just(inscripcion));
-        when(personaPersistencePort.findById(1L)).thenReturn(Mono.just(persona));
+        when(personaServicePort.findById(1L)).thenReturn(Mono.just(persona));
         when(bootcampServicePort.getBootcampById(1L)).thenReturn(Mono.just(bootcamp));
 
         // Act

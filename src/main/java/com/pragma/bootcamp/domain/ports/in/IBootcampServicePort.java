@@ -12,4 +12,5 @@ public interface IBootcampServicePort {
     Mono<Bootcamp> getBootcampById(Long id);
     Mono<Void> deleteBootcamp(Long id);
     Mono<BootcampDetalleCompletoResponse> getBootcampCompleto(Long id);
+    Mono<Long> countBootcamps();
 }

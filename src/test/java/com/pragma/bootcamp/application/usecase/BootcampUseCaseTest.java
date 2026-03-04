@@ -6,13 +6,12 @@ import com.pragma.bootcamp.application.dtos.responses.CapacidadSimpleResponse;
 import com.pragma.bootcamp.application.dtos.responses.TecnologiaSimpleResponse;
 import com.pragma.bootcamp.domain.models.Bootcamp;
 import com.pragma.bootcamp.domain.models.BootcampReporte;
+import com.pragma.bootcamp.domain.models.Persona;
 import com.pragma.bootcamp.domain.ports.out.IBootcampPersistencePort;
-import com.pragma.bootcamp.domain.ports.out.IBootcampReportePersistencePort;
+import com.pragma.bootcamp.domain.ports.out.IReporteServicePort;
 import com.pragma.bootcamp.domain.ports.out.ICapacidadServicePort;
 import com.pragma.bootcamp.infrastructure.entities.InscripcionEntity;
-import com.pragma.bootcamp.infrastructure.entities.PersonaEntity;
 import com.pragma.bootcamp.infrastructure.r2dbc.IInscripcionRepository;
-import com.pragma.bootcamp.infrastructure.r2dbc.IPersonaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -46,13 +45,13 @@ class BootcampUseCaseTest {
     private ICapacidadServicePort capacidadServicePort;
 
     @Mock
-    private IBootcampReportePersistencePort reportePersistencePort;
+    private IReporteServicePort reporteServicePort;
 
     @Mock
     private IInscripcionRepository inscripcionRepository;
 
     @Mock
-    private IPersonaRepository personaRepository;
+    private com.pragma.bootcamp.domain.ports.out.IPersonaServicePort personaServicePort;
 
     @InjectMocks
     private BootcampUseCase bootcampUseCase;
@@ -81,7 +80,7 @@ class BootcampUseCaseTest {
         when(bootcampPersistencePort.save(any(Bootcamp.class))).thenReturn(Mono.just(bootcamp));
         when(inscripcionRepository.countByBootcampIdAndEstadoActiva(anyLong())).thenReturn(Mono.just(0L));
         when(capacidadServicePort.getCapacidadesByIds(anySet())).thenReturn(Flux.empty());
-        when(reportePersistencePort.saveReporte(any(BootcampReporte.class))).thenReturn(Mono.just(BootcampReporte.builder().build()));
+        when(reporteServicePort.generarReporte(any(BootcampReporte.class))).thenReturn(Mono.just(BootcampReporte.builder().build()));
 
         // Act
         Mono<Bootcamp> result = bootcampUseCase.saveBootcamp(bootcamp);
@@ -188,7 +187,7 @@ class BootcampUseCaseTest {
                 .estado("ACTIVA")
                 .build();
 
-        PersonaEntity persona = PersonaEntity.builder()
+        Persona persona = Persona.builder()
                 .id(1L)
                 .nombre("Juan")
                 .apellido("Pérez")
@@ -200,7 +199,7 @@ class BootcampUseCaseTest {
 
         when(bootcampPersistencePort.getBootcampById(1L)).thenReturn(Mono.just(bootcamp));
         when(inscripcionRepository.findByBootcampIdAndEstadoActiva(1L)).thenReturn(Flux.just(inscripcion));
-        when(personaRepository.findById(1L)).thenReturn(Mono.just(persona));
+        when(personaServicePort.findById(1L)).thenReturn(Mono.just(persona));
         when(capacidadServicePort.getCapacidadesByIds(anySet())).thenReturn(Flux.just(capacidad));
 
         // Act

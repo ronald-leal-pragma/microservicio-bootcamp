@@ -4,6 +4,7 @@ import com.pragma.bootcamp.domain.models.Bootcamp;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pragma.bootcamp.infrastructure.entities.BootcampEntity;
 import org.springframework.stereotype.Component;
 
 import java.util.Set;

@@ -28,6 +28,7 @@ import java.util.stream.Collectors;
 public class InscripcionHandler {
 
     private final IInscripcionServicePort inscripcionServicePort;
+    private final com.pragma.bootcamp.domain.ports.out.ICapacidadServicePort capacidadServicePort;
     private final Validator validator;
 
     public Mono<ServerResponse> inscribirPersona(ServerRequest request) {
@@ -42,14 +43,11 @@ public class InscripcionHandler {
                             inscripcionRequest.getBootcampId()
                     );
                 })
-                .flatMap(inscripcion -> {
-                    InscripcionResponse response = toResponse(inscripcion);
-                    
-                    return ServerResponse
+                .flatMap(inscripcion -> toResponseWithCapacidades(inscripcion)
+                    .flatMap(response -> ServerResponse
                             .status(HttpStatus.CREATED)
                             .contentType(MediaType.APPLICATION_JSON)
-                            .bodyValue(response);
-                })
+                            .bodyValue(response)))
                 .onErrorResume(IllegalArgumentException.class, e -> {
                     log.error("Error de validación al inscribir persona: {}", e.getMessage());
                     return ServerResponse
@@ -79,14 +77,11 @@ public class InscripcionHandler {
         log.info("Handler: getInscripcionById - Buscando inscripción ID: {}", id);
         
         return inscripcionServicePort.getInscripcionById(id)
-                .flatMap(inscripcion -> {
-                    InscripcionResponse response = toResponse(inscripcion);
-                    
-                    return ServerResponse
+                .flatMap(inscripcion -> toResponseWithCapacidades(inscripcion)
+                    .flatMap(response -> ServerResponse
                             .ok()
                             .contentType(MediaType.APPLICATION_JSON)
-                            .bodyValue(response);
-                })
+                            .bodyValue(response)))
                 .switchIfEmpty(Mono.defer(() -> {
                     log.warn("Handler: getInscripcionById - Inscripción ID {} no encontrada", id);
                     return ServerResponse
@@ -105,7 +100,7 @@ public class InscripcionHandler {
         log.info("Handler: getInscripcionesByPersonaId - Buscando inscripciones de persona ID: {}", personaId);
         
         return inscripcionServicePort.getInscripcionesByPersonaId(personaId)
-                .map(this::toResponse)
+                .flatMap(this::toResponseWithCapacidades)
                 .collectList()
                 .flatMap(inscripciones -> ServerResponse
                         .ok()
@@ -140,13 +135,30 @@ public class InscripcionHandler {
             bootcampResponse.setDescripcion(inscripcion.getBootcamp().getDescripcion());
             bootcampResponse.setFechaLanzamiento(inscripcion.getBootcamp().getFechaLanzamiento());
             bootcampResponse.setDuracionSemanas(inscripcion.getBootcamp().getDuracionSemanas());
-            // No enriquecemos con capacidades completas - solo devolvemos el bootcamp básico
             bootcampResponse.setCapacidades(null);
             
             builder.bootcamp(bootcampResponse);
         }
 
         return builder.build();
+    }
+
+    private Mono<InscripcionResponse> toResponseWithCapacidades(Inscripcion inscripcion) {
+        if (inscripcion.getBootcamp() == null || 
+            inscripcion.getBootcamp().getCapacidadesIds() == null || 
+            inscripcion.getBootcamp().getCapacidadesIds().isEmpty()) {
+            return Mono.just(toResponse(inscripcion));
+        }
+
+        return capacidadServicePort.getCapacidadesByIds(inscripcion.getBootcamp().getCapacidadesIds())
+                .collectList()
+                .map(capacidades -> {
+                    InscripcionResponse response = toResponse(inscripcion);
+                    if (response.getBootcamp() != null) {
+                        response.getBootcamp().setCapacidades(capacidades);
+                    }
+                    return response;
+                });
     }
 
     private Mono<InscripcionRequest> validate(InscripcionRequest inscripcionRequest) {

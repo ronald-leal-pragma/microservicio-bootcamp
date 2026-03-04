@@ -5,7 +5,6 @@ import com.pragma.bootcamp.domain.models.Inscripcion;
 import com.pragma.bootcamp.domain.ports.in.IBootcampServicePort;
 import com.pragma.bootcamp.domain.ports.in.IInscripcionServicePort;
 import com.pragma.bootcamp.domain.ports.out.IInscripcionPersistencePort;
-import com.pragma.bootcamp.domain.ports.out.IPersonaPersistencePort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,7 +21,7 @@ import java.util.List;
 public class InscripcionUseCase implements IInscripcionServicePort {
 
     private final IInscripcionPersistencePort inscripcionPersistencePort;
-    private final IPersonaPersistencePort personaPersistencePort;
+    private final com.pragma.bootcamp.domain.ports.out.IPersonaServicePort personaServicePort;
     private final IBootcampServicePort bootcampServicePort;
 
     @Override
@@ -30,19 +29,16 @@ public class InscripcionUseCase implements IInscripcionServicePort {
     public Mono<Inscripcion> inscribirPersonaEnBootcamp(Long personaId, Long bootcampId) {
         log.info("UseCase: inscribirPersonaEnBootcamp - Persona ID: {}, Bootcamp ID: {}", personaId, bootcampId);
 
-        // 1. Validar que la persona existe
-        return personaPersistencePort.findById(personaId)
+        return personaServicePort.findById(personaId)
                 .switchIfEmpty(Mono.error(new IllegalArgumentException("La persona con ID " + personaId + " no existe")))
                 .flatMap(persona -> {
                     log.info("UseCase: inscribirPersonaEnBootcamp - Persona encontrada: {}", persona.getNombre());
                     
-                    // 2. Validar que el bootcamp existe
                     return bootcampServicePort.getBootcampById(bootcampId)
                             .switchIfEmpty(Mono.error(new IllegalArgumentException("El bootcamp con ID " + bootcampId + " no existe")))
                             .flatMap(bootcampNuevo -> {
                                 log.info("UseCase: inscribirPersonaEnBootcamp - Bootcamp encontrado: {}", bootcampNuevo.getNombre());
                                 
-                                // 3. Validar máximo 5 inscripciones activas
                                 return inscripcionPersistencePort.countInscripcionesActivasByPersonaId(personaId)
                                         .flatMap(count -> {
                                             if (count >= 5) {
@@ -51,19 +47,16 @@ public class InscripcionUseCase implements IInscripcionServicePort {
                                                         "La persona ya tiene el máximo de 5 inscripciones activas"));
                                             }
                                             
-                                            // 4. Obtener inscripciones activas y validar solapamiento de fechas
                                             return inscripcionPersistencePort.findByPersonaIdActivas(personaId)
                                                     .flatMap(inscripcion -> bootcampServicePort.getBootcampById(inscripcion.getBootcampId()))
                                                     .collectList()
                                                     .flatMap(bootcampsActivos -> {
-                                                        // Validar que no haya solapamiento de fechas
                                                         if (existeSolapamientoFechas(bootcampNuevo, bootcampsActivos)) {
                                                             log.warn("UseCase: inscribirPersonaEnBootcamp - Solapamiento de fechas detectado");
                                                             return Mono.error(new IllegalArgumentException(
                                                                     "Ya existe una inscripción activa en un bootcamp con fechas que se solapan"));
                                                         }
                                                         
-                                                        // 5. Crear la inscripción
                                                         Inscripcion nuevaInscripcion = Inscripcion.builder()
                                                                 .personaId(personaId)
                                                                 .bootcampId(bootcampId)
@@ -74,7 +67,8 @@ public class InscripcionUseCase implements IInscripcionServicePort {
                                                         return inscripcionPersistencePort.saveInscripcion(nuevaInscripcion)
                                                                 .doOnSuccess(saved -> log.info(
                                                                         "UseCase: inscribirPersonaEnBootcamp - Inscripción creada con ID: {}", 
-                                                                        saved.getId()));
+                                                                        saved.getId()))
+                                                                .flatMap(this::enrichInscripcion);
                                                     });
                                         });
                             });
@@ -96,7 +90,7 @@ public class InscripcionUseCase implements IInscripcionServicePort {
     }
 
     private Mono<Inscripcion> enrichInscripcion(Inscripcion inscripcion) {
-        return personaPersistencePort.findById(inscripcion.getPersonaId())
+        return personaServicePort.findById(inscripcion.getPersonaId())
                 .flatMap(persona -> {
                     inscripcion.setPersona(persona);
                     return bootcampServicePort.getBootcampById(inscripcion.getBootcampId())
@@ -117,28 +111,28 @@ public class InscripcionUseCase implements IInscripcionServicePort {
     private boolean existeSolapamientoFechas(Bootcamp bootcampNuevo, List<Bootcamp> bootcampsActivos) {
         LocalDate inicioNuevo = bootcampNuevo.getFechaLanzamiento();
         LocalDate finNuevo = inicioNuevo.plusWeeks(bootcampNuevo.getDuracionSemanas());
-        
-        log.info("UseCase: existeSolapamientoFechas - Validando bootcamp: {} ({} a {})", 
+
+        log.info("UseCase: existeSolapamientoFechas - Validando bootcamp: {} ({} a {})",
                 bootcampNuevo.getNombre(), inicioNuevo, finNuevo);
-        
+
         for (Bootcamp bootcampActivo : bootcampsActivos) {
             LocalDate inicioActivo = bootcampActivo.getFechaLanzamiento();
             LocalDate finActivo = inicioActivo.plusWeeks(bootcampActivo.getDuracionSemanas());
-            
-            log.info("UseCase: existeSolapamientoFechas - Comparando con: {} ({} a {})", 
+
+            log.info("UseCase: existeSolapamientoFechas - Comparando con: {} ({} a {})",
                     bootcampActivo.getNombre(), inicioActivo, finActivo);
-            
+
             // Verificar solapamiento
-            boolean solapamiento = !(finNuevo.isBefore(inicioActivo) || finNuevo.isEqual(inicioActivo) || 
+            boolean solapamiento = !(finNuevo.isBefore(inicioActivo) || finNuevo.isEqual(inicioActivo) ||
                                     inicioNuevo.isAfter(finActivo) || inicioNuevo.isEqual(finActivo));
-            
+
             if (solapamiento) {
-                log.warn("UseCase: existeSolapamientoFechas - Solapamiento detectado con bootcamp: {}", 
+                log.warn("UseCase: existeSolapamientoFechas - Solapamiento detectado con bootcamp: {}",
                         bootcampActivo.getNombre());
                 return true;
             }
         }
-        
+
         return false;
     }
 }

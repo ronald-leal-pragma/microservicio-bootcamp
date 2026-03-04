@@ -1,25 +1,20 @@
 package com.pragma.bootcamp.application.usecase;
 
-import com.pragma.bootcamp.application.dtos.responses.BootcampCompleteResponse;
-import com.pragma.bootcamp.application.dtos.responses.BootcampDetalleCompletoResponse;
-import com.pragma.bootcamp.application.dtos.responses.CapacidadCompleteResponse;
-import com.pragma.bootcamp.application.dtos.responses.PersonaInscritaDTO;
-import com.pragma.bootcamp.application.dtos.responses.TecnologiaResponse;
+import com.pragma.bootcamp.application.dtos.responses.*;
 import com.pragma.bootcamp.domain.models.Bootcamp;
-import com.pragma.bootcamp.domain.models.BootcampReporte;
 import com.pragma.bootcamp.domain.ports.in.IBootcampServicePort;
 import com.pragma.bootcamp.domain.ports.out.IBootcampPersistencePort;
-import com.pragma.bootcamp.domain.ports.out.IBootcampReportePersistencePort;
 import com.pragma.bootcamp.domain.ports.out.ICapacidadServicePort;
 import com.pragma.bootcamp.infrastructure.r2dbc.IInscripcionRepository;
-import com.pragma.bootcamp.infrastructure.r2dbc.IPersonaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
+
+import com.pragma.bootcamp.domain.ports.out.IReporteServicePort;
+import com.pragma.bootcamp.domain.models.BootcampReporte;
 
 import java.time.LocalDateTime;
 import java.util.Comparator;
@@ -35,76 +30,53 @@ public class BootcampUseCase implements IBootcampServicePort {
 
     private final IBootcampPersistencePort bootcampPersistencePort;
     private final ICapacidadServicePort capacidadServicePort;
-    private final IBootcampReportePersistencePort reportePersistencePort;
     private final IInscripcionRepository inscripcionRepository;
-    private final IPersonaRepository personaRepository;
+    private final com.pragma.bootcamp.domain.ports.out.IPersonaServicePort personaServicePort;
+    private final IReporteServicePort reporteServicePort;
 
     @Override
     public Mono<Bootcamp> saveBootcamp(Bootcamp bootcamp) {
         log.info("UseCase - Recibido bootcamp: {}", bootcamp);
-        // Validate capacidades count (mínimo 1, máximo 4)
         if (bootcamp.getCapacidadesIds() == null || bootcamp.getCapacidadesIds().isEmpty() || bootcamp.getCapacidadesIds().size() > 4) {
             return Mono.error(new IllegalArgumentException("Un bootcamp debe tener entre 1 y 4 capacidades asociadas"));
         }
 
-        // Validate each capacidad exists in microservicio-capacidad
-        return Flux.fromIterable(bootcamp.getCapacidadesIds())
-                .flatMap(capacidadServicePort::validateCapacidadExists)
+        return capacidadServicePort.validateCapacidadesBatch(bootcamp.getCapacidadesIds())
                 .then(bootcampPersistencePort.save(bootcamp))
-                .doOnNext(saved -> log.info("UseCase - Bootcamp guardado: {}", saved))
-                .flatMap(savedBootcamp -> {
-                    // Generar reporte de forma asíncrona (no bloqueante)
-                    generarReporteAsync(savedBootcamp)
-                            .subscribeOn(Schedulers.boundedElastic())
-                            .subscribe(
-                                    reporte -> log.info("UseCase - Reporte generado exitosamente para bootcamp ID: {}", reporte.getBootcampId()),
-                                    error -> log.error("UseCase - Error al generar reporte: {}", error.getMessage())
-                            );
-                    
-                    // Retornar el bootcamp inmediatamente sin esperar el reporte
-                    return Mono.just(savedBootcamp);
-                });
+                .doOnSuccess(this::sendReportAsync)
+                .doOnNext(saved -> log.info("UseCase - Bootcamp guardado: {}", saved));
     }
 
-    private Mono<BootcampReporte> generarReporteAsync(Bootcamp bootcamp) {
-        log.info("UseCase - Iniciando generación de reporte para bootcamp ID: {}", bootcamp.getId());
-        
-        // Obtener capacidades para contar tecnologías
-        return capacidadServicePort.getCapacidadesByIds(bootcamp.getCapacidadesIds())
-                .collectList()
-                .flatMap(capacidades -> {
-                    // Calcular cantidad de tecnologías únicas
-                    Set<Long> tecnologiasUnicas = capacidades.stream()
-                            .flatMap(cap -> cap.getTecnologias() != null ? 
-                                    cap.getTecnologias().stream().map(tech -> tech.getId()) : 
-                                    Set.<Long>of().stream())
-                            .collect(Collectors.toSet());
-                    
-                    // Contar personas inscritas (activas) en este bootcamp
-                    return inscripcionRepository.countByBootcampIdAndEstadoActiva(bootcamp.getId())
-                            .map(count -> {
-                                BootcampReporte reporte = BootcampReporte.builder()
-                                        .bootcampId(bootcamp.getId())
-                                        .bootcampNombre(bootcamp.getNombre())
-                                        .bootcampDescripcion(bootcamp.getDescripcion())
-                                        .fechaLanzamiento(bootcamp.getFechaLanzamiento())
-                                        .duracionSemanas(bootcamp.getDuracionSemanas())
-                                        .cantidadCapacidades(bootcamp.getCapacidadesIds().size())
-                                        .cantidadTecnologias(tecnologiasUnicas.size())
-                                        .cantidadPersonasInscritas(count.intValue())
-                                        .fechaRegistroReporte(LocalDateTime.now())
-                                        .build();
-                                
-                                log.info("UseCase - Reporte creado: Bootcamp={}, Capacidades={}, Tecnologías={}, Personas={}",
-                                        reporte.getBootcampNombre(), 
-                                        reporte.getCantidadCapacidades(),
-                                        reporte.getCantidadTecnologias(),
-                                        reporte.getCantidadPersonasInscritas());
-                                
-                                return reporte;
-                            });
+    private void sendReportAsync(Bootcamp bootcamp) {
+        Mono.just(bootcamp)
+                .flatMap(b -> {
+                    if (b.getCapacidadesIds() == null || b.getCapacidadesIds().isEmpty()) {
+                        return Mono.just(0);
+                    }
+                    return capacidadServicePort.getCapacidadesByIds(b.getCapacidadesIds())
+                            .flatMap(cap -> Flux.fromIterable(cap.getTecnologias() != null ? cap.getTecnologias() : java.util.Collections.emptyList()))
+                            .map(TecnologiaSimpleResponse::getId)
+                            .collect(Collectors.toSet())
+                            .map(Set::size);
                 })
-                .flatMap(reportePersistencePort::saveReporte);
+                .flatMap(techCount -> {
+                    BootcampReporte reporte = BootcampReporte.builder()
+                            .bootcampId(bootcamp.getId())
+                            .bootcampNombre(bootcamp.getNombre())
+                            .bootcampDescripcion(bootcamp.getDescripcion())
+                            .fechaLanzamiento(bootcamp.getFechaLanzamiento())
+                            .duracionSemanas(bootcamp.getDuracionSemanas())
+                            .cantidadCapacidades(bootcamp.getCapacidadesIds() != null ? bootcamp.getCapacidadesIds().size() : 0)
+                            .cantidadTecnologias(techCount)
+                            .cantidadPersonasInscritas(0)
+                            .fechaRegistroReporte(LocalDateTime.now())
+                            .build();
+                    return reporteServicePort.generarReporte(reporte);
+                })
+                .subscribe(
+                        success -> log.info("UseCase: Reporte de bootcamp generado exitosamente en background"),
+                        error -> log.error("UseCase: Error al generar reporte de bootcamp en background: {}", error.getMessage())
+                );
     }
 
     @Override
@@ -213,11 +185,7 @@ public class BootcampUseCase implements IBootcampServicePort {
                                         .flatMap(capId -> {
                                             log.info("UseCase: deleteBootcamp - Eliminando capacidad huérfana con ID: {}", capId);
                                             return capacidadServicePort.deleteCapacidad(capId)
-                                                    .onErrorResume(e -> {
-                                                        log.warn("UseCase: deleteBootcamp - Error al eliminar capacidad {}: {}", 
-                                                                capId, e.getMessage());
-                                                        return Mono.empty();
-                                                    });
+                                                    .doOnError(e -> log.error("UseCase: deleteBootcamp - Fallo al eliminar capacidad {}. Se hará rollback del bootcamp. Error: {}", capId, e.getMessage()));
                                         })
                                         .then();
                             });
@@ -240,11 +208,11 @@ public class BootcampUseCase implements IBootcampServicePort {
                     Mono<List<PersonaInscritaDTO>> personasInscritasMono = inscripcionRepository
                             .findByBootcampIdAndEstadoActiva(id)
                             .flatMap(inscripcionEntity -> 
-                                personaRepository.findById(inscripcionEntity.getPersonaId())
-                                    .map(personaEntity -> PersonaInscritaDTO.builder()
-                                            .nombre(personaEntity.getNombre())
-                                            .apellido(personaEntity.getApellido())
-                                            .email(personaEntity.getEmail())
+                                personaServicePort.findById(inscripcionEntity.getPersonaId())
+                                    .map(persona -> PersonaInscritaDTO.builder()
+                                            .nombre(persona.getNombre())
+                                            .apellido(persona.getApellido())
+                                            .email(persona.getEmail())
                                             .build())
                             )
                             .collectList();
@@ -298,5 +266,10 @@ public class BootcampUseCase implements IBootcampServicePort {
                                         .build();
                             });
                 });
+    }
+
+    @Override
+    public Mono<Long> countBootcamps() {
+        return bootcampPersistencePort.count();
     }
 }

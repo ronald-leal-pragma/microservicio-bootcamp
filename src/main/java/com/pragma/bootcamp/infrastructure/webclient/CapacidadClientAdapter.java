@@ -2,6 +2,8 @@ package com.pragma.bootcamp.infrastructure.webclient;
 
 import com.pragma.bootcamp.application.dtos.responses.CapacidadSimpleResponse;
 import com.pragma.bootcamp.domain.ports.out.ICapacidadServicePort;
+import com.pragma.bootcamp.infrastructure.webclient.dto.ValidateBatchRequest;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
@@ -18,6 +20,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CapacidadClientAdapter implements ICapacidadServicePort {
 
+    private static final String SERVICE_CLIENT = "capacidad-client";
+
     private final WebClient.Builder webClientBuilder;
 
     private WebClient client() {
@@ -25,17 +29,28 @@ public class CapacidadClientAdapter implements ICapacidadServicePort {
     }
 
     @Override
-    public Mono<Void> validateCapacidadExists(Long id) {
+    @CircuitBreaker(name = SERVICE_CLIENT)
+    public Mono<Void> validateCapacidadesBatch(Set<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Mono.empty();
+        }
+
+        ValidateBatchRequest request = new ValidateBatchRequest(ids);
+
         return client()
-                .get()
-                .uri(uriBuilder -> uriBuilder.path("/api/capacidad/{id}").build(id))
+                .post()
+                .uri("/api/capacidad/validate-batch")
+                .bodyValue(request)
                 .retrieve()
-                .onStatus(status -> status == HttpStatus.NOT_FOUND, resp -> Mono.error(new IllegalArgumentException("Capacidad no encontrada: " + id)))
+                .onStatus(status -> status == HttpStatus.NOT_FOUND,
+                        resp -> resp.bodyToMono(String.class)
+                                .flatMap(body -> Mono.error(new IllegalArgumentException("Capacidades no encontradas: " + body))))
                 .bodyToMono(Object.class)
                 .then();
     }
 
     @Override
+    @CircuitBreaker(name = SERVICE_CLIENT)
     public Flux<CapacidadSimpleResponse> getCapacidadesByIds(Set<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return Flux.empty();
@@ -52,11 +67,13 @@ public class CapacidadClientAdapter implements ICapacidadServicePort {
                         .queryParam("ids", idsParam)
                         .build())
                 .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<List<CapacidadSimpleResponse>>() {})
+                .bodyToMono(new ParameterizedTypeReference<List<CapacidadSimpleResponse>>() {
+                })
                 .flatMapMany(Flux::fromIterable);
     }
 
     @Override
+    @CircuitBreaker(name = SERVICE_CLIENT)
     public Mono<Void> deleteCapacidad(Long id) {
         return client()
                 .delete()

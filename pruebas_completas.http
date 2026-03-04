@@ -1,13 +1,3 @@
-### ============================================
-### PRUEBAS COMPLETAS - HU1 a HU6
-### Sistema de Microservicios: Tecnología, Capacidad y Bootcamp
-### ============================================
-
-### ============================================
-### HU1 - CREAR TECNOLOGÍA
-### Microservicio Tecnología - Puerto 8081
-### ============================================
-
 ### HU1 - Crear Tecnología 1: Java
 POST http://localhost:8081/api/tecnologia
 Content-Type: application/json
@@ -908,20 +898,3 @@ Content-Type: application/json
 ### Este debe retornar TODAS las tecnologías de las 4 capacidades (sin duplicados)
 ### NOTA: Reemplazar {id} con el ID del bootcamp con 4 capacidades
 GET http://localhost:8083/api/bootcamp/27/completo
-
-### HU8 - RESUMEN DE VALIDACIONES HU8
-### ✅ 1. Endpoint retorna información completa del bootcamp (200 OK)
-### ✅ 2. personasInscritas contiene nombre, apellido y email de cada inscrito ACTIVO
-### ✅ 3. personasInscritas es un array vacío [] si no hay inscripciones
-### ✅ 4. capacidades contiene todas las capacidades del bootcamp con sus tecnologías
-### ✅ 5. tecnologias contiene todas las tecnologías únicas de las capacidades (sin duplicados)
-### ✅ 6. Bootcamp con 1 capacidad funciona correctamente
-### ✅ 7. Bootcamp con 4 capacidades funciona correctamente
-### ✅ 8. Bootcamp inexistente retorna 404 NOT FOUND
-### ✅ 9. La respuesta JSON tiene la estructura correcta según requisitos
-
-### ============================================
-### FIN DE PRUEBAS COMPLETAS (HU1-HU8)
-### ============================================
-
-

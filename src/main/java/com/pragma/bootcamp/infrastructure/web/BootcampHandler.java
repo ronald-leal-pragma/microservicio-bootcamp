@@ -1,6 +1,7 @@
 package com.pragma.bootcamp.infrastructure.web;
 
 import com.pragma.bootcamp.application.dtos.requests.BootcampRequest;
+import com.pragma.bootcamp.application.dtos.responses.PagedResponse;
 import com.pragma.bootcamp.application.mappers.BootcampMapper;
 import com.pragma.bootcamp.domain.ports.in.IBootcampServicePort;
 import jakarta.validation.Validator;
@@ -74,7 +75,29 @@ public class BootcampHandler {
         
         return bootcampServicePort.getAllBootcamps(page, size, sort, order)
                 .collectList()
-                .flatMap(bootcamps -> ServerResponse.ok().contentType(MediaType.APPLICATION_JSON).bodyValue(bootcamps));
+                .zipWith(bootcampServicePort.countBootcamps())
+                .map(tuple -> {
+                    var bootcamps = tuple.getT1();
+                    var totalElements = tuple.getT2();
+                    var totalPages = (int) Math.ceil((double) totalElements / size);
+                    
+                    var metadata = PagedResponse.PageMetadata.builder()
+                            .page(page)
+                            .size(size)
+                            .totalElements(totalElements)
+                            .totalPages(totalPages)
+                            .sortBy(sort)
+                            .sortOrder(order)
+                            .build();
+                    
+                    return PagedResponse.<com.pragma.bootcamp.application.dtos.responses.BootcampCompleteResponse>builder()
+                            .content(bootcamps)
+                            .metadata(metadata)
+                            .build();
+                })
+                .flatMap(pagedResponse -> ServerResponse.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(pagedResponse));
     }
 
     public Mono<ServerResponse> getBootcampById(ServerRequest request) {

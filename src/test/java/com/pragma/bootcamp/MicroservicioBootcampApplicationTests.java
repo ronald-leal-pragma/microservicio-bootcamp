@@ -11,8 +11,5 @@ class MicroservicioBootcampApplicationTests {
     @Disabled("Requiere configuración de base de datos activa para ejecutarse")
     @DisplayName("Debe cargar contexto de Spring exitosamente")
     void contextLoads() {
-        // Este test verifica que el contexto de Spring se carga correctamente
-        // Si falla, indica problemas en la configuración de beans
-        // Para ejecutarlo, se necesita configurar una base de datos R2DBC activa
     }
 }

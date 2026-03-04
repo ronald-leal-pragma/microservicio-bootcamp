@@ -1,6 +1,7 @@
 package com.pragma.bootcamp.infrastructure.persistence;
 
 import com.pragma.bootcamp.domain.models.Bootcamp;
+import com.pragma.bootcamp.infrastructure.entities.BootcampEntity;
 import com.pragma.bootcamp.infrastructure.r2dbc.IBootcampRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,7 +19,6 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)

@@ -7,19 +7,16 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public interface IInscripcionRepository extends ReactiveCrudRepository<InscripcionEntity, Long> {
-    
+
     @Query("SELECT * FROM inscripcion WHERE persona_id = :personaId AND estado = 'ACTIVA'")
     Flux<InscripcionEntity> findByPersonaIdAndEstadoActiva(Long personaId);
-    
-    @Query("SELECT * FROM inscripcion WHERE persona_id = :personaId")
+
+
     Flux<InscripcionEntity> findByPersonaId(Long personaId);
-    
-    @Query("SELECT * FROM inscripcion WHERE bootcamp_id = :bootcampId AND estado = 'ACTIVA'")
-    Flux<InscripcionEntity> findByBootcampIdAndEstadoActiva(Long bootcampId);
-    
-    @Query("SELECT COUNT(*) FROM inscripcion WHERE persona_id = :personaId AND estado = 'ACTIVA'")
-    Mono<Long> countByPersonaIdAndEstadoActiva(Long personaId);
-    
-    @Query("SELECT COUNT(*) FROM inscripcion WHERE bootcamp_id = :bootcampId AND estado = 'ACTIVA'")
-    Mono<Long> countByBootcampIdAndEstadoActiva(Long bootcampId);
+
+    Flux<InscripcionEntity> findByBootcampIdAndEstadoActiva(Long bootcampId,String estado);
+
+    Mono<Long> countByPersonaIdAndEstadoActiva(Long personaId,String estado);
+
+    Mono<Long> countByBootcampIdAndEstado(Long bootcampId, String estado);
 }

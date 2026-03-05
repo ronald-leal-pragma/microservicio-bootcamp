@@ -2,6 +2,7 @@ package com.pragma.bootcamp.exceptionhandler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pragma.bootcamp.infrastructure.entities.ErrorResponse;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
@@ -32,6 +33,12 @@ public class GlobalExceptionHandler implements WebExceptionHandler {
     @NonNull
     public Mono<Void> handle(@NonNull ServerWebExchange exchange, @NonNull Throwable ex) {
         log.error("Error detectado en ruta [{}]: {}", exchange.getRequest().getPath(), ex.getMessage());
+
+        if (ex instanceof CallNotPermittedException) {
+            log.warn("Circuit Breaker abierto, llamada rechazada: {}", ex.getMessage());
+            return writeResponse(exchange, HttpStatus.SERVICE_UNAVAILABLE, "SERVICE_UNAVAILABLE",
+                    "El servicio externo no está disponible temporalmente. Por favor, intente nuevamente en unos segundos.");
+        }
 
         if (ex instanceof WebExchangeBindException webEx) {
             return handleValidationException(webEx, exchange);

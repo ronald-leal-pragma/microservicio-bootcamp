@@ -14,7 +14,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
-@Component
 @RequiredArgsConstructor
 public class ReporteClientAdapter implements IReporteServicePort {
 
@@ -53,5 +52,28 @@ public class ReporteClientAdapter implements IReporteServicePort {
                 .bodyToMono(BootcampReporte.class)
                 .doOnSuccess(r -> log.info("ReporteClient: Reporte generado con ID: {}", r.getId()))
                 .doOnError(e -> log.error("ReporteClient: Error generando reporte: {}", e.getMessage()));
+    }
+
+    @Override
+    @CircuitBreaker(name = SERVICE_CLIENT)
+    public Mono<Void> actualizarReporte(Long bootcampId, int cantPersonas, int cantCapacidades, int cantTecnologias) {
+        log.info("ReporteClient: Actualizando reporte para bootcamp ID: {}", bootcampId);
+
+        Map<String, Object> request = new HashMap<>();
+        request.put("cantidadPersonasInscritas", cantPersonas);
+        request.put("cantidadCapacidades", cantCapacidades);
+        request.put("cantidadTecnologias", cantTecnologias);
+
+        return client()
+                .put()
+                .uri("/api/reporte/bootcamp/" + bootcampId)
+                .bodyValue(request)
+                .retrieve()
+                .onStatus(HttpStatus.BAD_REQUEST::equals,
+                        resp -> resp.bodyToMono(String.class)
+                                .flatMap(body -> Mono.error(new IllegalArgumentException(body))))
+                .bodyToMono(Void.class)
+                .doOnSuccess(v -> log.info("ReporteClient: Reporte actualizado para bootcamp ID: {}", bootcampId))
+                .doOnError(e -> log.error("ReporteClient: Error actualizando reporte: {}", e.getMessage()));
     }
 }

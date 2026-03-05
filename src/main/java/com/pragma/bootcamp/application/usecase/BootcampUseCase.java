@@ -81,56 +81,53 @@ public class BootcampUseCase implements IBootcampServicePort {
 
     @Override
     public Flux<BootcampCompleteResponse> getAllBootcamps(int page, int size, String sort, String order) {
-        return bootcampPersistencePort.findAll(page, size)
+        if ("nombre".equalsIgnoreCase(sort)) {
+            // La BD ya aplica el paginado y orden por nombre
+            return bootcampPersistencePort.findAll(page, size, sort, order)
+                    .flatMap(this::enrichBootcamp);
+        }
+
+        // Para cantCapacidades: traer todo, enriquecer, ordenar en memoria y paginar
+        Comparator<BootcampCompleteResponse> comparator = Comparator.comparing(
+                r -> r.getCapacidades().size());
+        if ("desc".equalsIgnoreCase(order)) {
+            comparator = comparator.reversed();
+        }
+        final Comparator<BootcampCompleteResponse> finalComparator = comparator;
+
+        return bootcampPersistencePort.findAll(0, Integer.MAX_VALUE, sort, order)
+                .flatMap(this::enrichBootcamp)
                 .collectList()
-                .flatMapMany(bootcamps -> {
-                    // Enrich with capacidades
-                    return Flux.fromIterable(bootcamps)
-                            .flatMap(bootcamp -> {
-                                if (bootcamp.getCapacidadesIds() == null || bootcamp.getCapacidadesIds().isEmpty()) {
-                                    BootcampCompleteResponse response = new BootcampCompleteResponse();
-                                    response.setId(bootcamp.getId());
-                                    response.setNombre(bootcamp.getNombre());
-                                    response.setDescripcion(bootcamp.getDescripcion());
-                                    response.setFechaLanzamiento(bootcamp.getFechaLanzamiento());
-                                    response.setDuracionSemanas(bootcamp.getDuracionSemanas());
-                                    response.setCapacidades(java.util.Collections.emptyList());
-                                    return Mono.just(response);
-                                }
+                .flatMapMany(all -> Flux.fromIterable(
+                        all.stream()
+                                .sorted(finalComparator)
+                                .skip((long) page * size)
+                                .limit(size)
+                                .collect(Collectors.toList())));
+    }
 
-                                return capacidadServicePort.getCapacidadesByIds(bootcamp.getCapacidadesIds())
-                                        .collectList()
-                                        .map(capacidades -> {
-                                            BootcampCompleteResponse response = new BootcampCompleteResponse();
-                                            response.setId(bootcamp.getId());
-                                            response.setNombre(bootcamp.getNombre());
-                                            response.setDescripcion(bootcamp.getDescripcion());
-                                            response.setFechaLanzamiento(bootcamp.getFechaLanzamiento());
-                                            response.setDuracionSemanas(bootcamp.getDuracionSemanas());
-                                            response.setCapacidades(capacidades);
-                                            return response;
-                                        });
-                            })
-                            .collectList()
-                            .flatMapMany(responses -> {
-                                // Sort
-                                Comparator<BootcampCompleteResponse> comparator;
-                                if ("cantCapacidades".equalsIgnoreCase(sort)) {
-                                    comparator = Comparator.comparing(r -> r.getCapacidades().size());
-                                } else {
-                                    comparator = Comparator.comparing(BootcampCompleteResponse::getNombre, String.CASE_INSENSITIVE_ORDER);
-                                }
-
-                                if ("desc".equalsIgnoreCase(order)) {
-                                    comparator = comparator.reversed();
-                                }
-
-                                return Flux.fromIterable(
-                                        responses.stream()
-                                                .sorted(comparator)
-                                                .collect(Collectors.toList())
-                                );
-                            });
+    private Mono<BootcampCompleteResponse> enrichBootcamp(Bootcamp bootcamp) {
+        if (bootcamp.getCapacidadesIds() == null || bootcamp.getCapacidadesIds().isEmpty()) {
+            BootcampCompleteResponse response = new BootcampCompleteResponse();
+            response.setId(bootcamp.getId());
+            response.setNombre(bootcamp.getNombre());
+            response.setDescripcion(bootcamp.getDescripcion());
+            response.setFechaLanzamiento(bootcamp.getFechaLanzamiento());
+            response.setDuracionSemanas(bootcamp.getDuracionSemanas());
+            response.setCapacidades(java.util.Collections.emptyList());
+            return Mono.just(response);
+        }
+        return capacidadServicePort.getCapacidadesByIds(bootcamp.getCapacidadesIds())
+                .collectList()
+                .map(capacidades -> {
+                    BootcampCompleteResponse response = new BootcampCompleteResponse();
+                    response.setId(bootcamp.getId());
+                    response.setNombre(bootcamp.getNombre());
+                    response.setDescripcion(bootcamp.getDescripcion());
+                    response.setFechaLanzamiento(bootcamp.getFechaLanzamiento());
+                    response.setDuracionSemanas(bootcamp.getDuracionSemanas());
+                    response.setCapacidades(capacidades);
+                    return response;
                 });
     }
 
@@ -206,7 +203,7 @@ public class BootcampUseCase implements IBootcampServicePort {
                     
                     // Obtener personas inscritas activas
                     Mono<List<PersonaInscritaDTO>> personasInscritasMono = inscripcionRepository
-                            .findByBootcampIdAndEstadoActiva(id)
+                            .findByBootcampIdAndEstadoActiva(id, "ACTIVA")
                             .flatMap(inscripcionEntity -> 
                                 personaServicePort.findById(inscripcionEntity.getPersonaId())
                                     .map(persona -> PersonaInscritaDTO.builder()

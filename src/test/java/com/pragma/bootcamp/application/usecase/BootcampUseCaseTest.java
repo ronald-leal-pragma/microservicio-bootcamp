@@ -8,8 +8,8 @@ import com.pragma.bootcamp.domain.models.Bootcamp;
 import com.pragma.bootcamp.domain.models.BootcampReporte;
 import com.pragma.bootcamp.domain.models.Persona;
 import com.pragma.bootcamp.domain.ports.out.IBootcampPersistencePort;
-import com.pragma.bootcamp.domain.ports.out.IReporteServicePort;
 import com.pragma.bootcamp.domain.ports.out.ICapacidadServicePort;
+import com.pragma.bootcamp.domain.ports.out.IReporteServicePort;
 import com.pragma.bootcamp.infrastructure.entities.InscripcionEntity;
 import com.pragma.bootcamp.infrastructure.r2dbc.IInscripcionRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,9 +29,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anySet;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -76,9 +74,8 @@ class BootcampUseCaseTest {
     @DisplayName("Debe guardar bootcamp exitosamente con 2 capacidades válidas")
     void saveBootcamp_Success() {
         // Arrange
-        when(capacidadServicePort.validateCapacidadExists(anyLong())).thenReturn(Mono.empty());
+        when(capacidadServicePort.validateCapacidadesBatch(anySet())).thenReturn(Mono.empty());
         when(bootcampPersistencePort.save(any(Bootcamp.class))).thenReturn(Mono.just(bootcamp));
-        when(inscripcionRepository.countByBootcampIdAndEstadoActiva(anyLong())).thenReturn(Mono.just(0L));
         when(capacidadServicePort.getCapacidadesByIds(anySet())).thenReturn(Flux.empty());
         when(reporteServicePort.generarReporte(any(BootcampReporte.class))).thenReturn(Mono.just(BootcampReporte.builder().build()));
 
@@ -95,7 +92,6 @@ class BootcampUseCaseTest {
                 .verifyComplete();
 
         verify(bootcampPersistencePort, times(1)).save(any(Bootcamp.class));
-        verify(capacidadServicePort, times(2)).validateCapacidadExists(anyLong());
     }
 
     @Test
@@ -109,9 +105,9 @@ class BootcampUseCaseTest {
 
         // Assert
         StepVerifier.create(result)
-                .expectErrorMatches(throwable -> 
-                    throwable instanceof IllegalArgumentException &&
-                    throwable.getMessage().contains("Un bootcamp debe tener entre 1 y 4 capacidades asociadas")
+                .expectErrorMatches(throwable ->
+                        throwable instanceof IllegalArgumentException &&
+                                throwable.getMessage().contains("Un bootcamp debe tener entre 1 y 4 capacidades asociadas")
                 )
                 .verify();
 
@@ -129,9 +125,9 @@ class BootcampUseCaseTest {
 
         // Assert
         StepVerifier.create(result)
-                .expectErrorMatches(throwable -> 
-                    throwable instanceof IllegalArgumentException &&
-                    throwable.getMessage().contains("Un bootcamp debe tener entre 1 y 4 capacidades asociadas")
+                .expectErrorMatches(throwable ->
+                        throwable instanceof IllegalArgumentException &&
+                                throwable.getMessage().contains("Un bootcamp debe tener entre 1 y 4 capacidades asociadas")
                 )
                 .verify();
 
@@ -198,7 +194,7 @@ class BootcampUseCaseTest {
         CapacidadSimpleResponse capacidad = new CapacidadSimpleResponse(1L, "Backend", List.of(tech1));
 
         when(bootcampPersistencePort.getBootcampById(1L)).thenReturn(Mono.just(bootcamp));
-        when(inscripcionRepository.findByBootcampIdAndEstadoActiva(1L)).thenReturn(Flux.just(inscripcion));
+        when(inscripcionRepository.findByBootcampIdAndEstadoActiva(eq(1L), anyString())).thenReturn(Flux.just(inscripcion));
         when(personaServicePort.findById(1L)).thenReturn(Mono.just(persona));
         when(capacidadServicePort.getCapacidadesByIds(anySet())).thenReturn(Flux.just(capacidad));
 
@@ -229,9 +225,9 @@ class BootcampUseCaseTest {
 
         // Assert
         StepVerifier.create(result)
-                .expectErrorMatches(throwable -> 
-                    throwable instanceof RuntimeException &&
-                    throwable.getMessage().contains("Bootcamp no encontrado")
+                .expectErrorMatches(throwable ->
+                        throwable instanceof RuntimeException &&
+                                throwable.getMessage().contains("Bootcamp no encontrado")
                 )
                 .verify();
     }
@@ -271,7 +267,7 @@ class BootcampUseCaseTest {
 
         CapacidadSimpleResponse capacidad1 = new CapacidadSimpleResponse(1L, "Capacidad 1", List.of());
 
-        when(bootcampPersistencePort.findAll(0, 10)).thenReturn(Flux.just(bootcamp, bootcamp2));
+        when(bootcampPersistencePort.findAll(eq(0), eq(10), anyString(), anyString())).thenReturn(Flux.just(bootcamp, bootcamp2));
         when(capacidadServicePort.getCapacidadesByIds(anySet())).thenReturn(Flux.just(capacidad1));
 
         // Act
@@ -282,6 +278,6 @@ class BootcampUseCaseTest {
                 .expectNextCount(2)
                 .verifyComplete();
 
-        verify(bootcampPersistencePort, times(1)).findAll(0, 10);
+        verify(bootcampPersistencePort, times(1)).findAll(eq(0), eq(10), anyString(), anyString());
     }
 }

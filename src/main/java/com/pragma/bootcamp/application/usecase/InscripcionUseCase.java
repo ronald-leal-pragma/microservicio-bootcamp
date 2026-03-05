@@ -1,19 +1,23 @@
 package com.pragma.bootcamp.application.usecase;
 
+import com.pragma.bootcamp.application.dtos.responses.TecnologiaSimpleResponse;
 import com.pragma.bootcamp.domain.models.Bootcamp;
 import com.pragma.bootcamp.domain.models.Inscripcion;
 import com.pragma.bootcamp.domain.ports.in.IBootcampServicePort;
 import com.pragma.bootcamp.domain.ports.in.IInscripcionServicePort;
+import com.pragma.bootcamp.domain.ports.out.ICapacidadServicePort;
 import com.pragma.bootcamp.domain.ports.out.IInscripcionPersistencePort;
+import com.pragma.bootcamp.domain.ports.out.IReporteServicePort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -23,9 +27,10 @@ public class InscripcionUseCase implements IInscripcionServicePort {
     private final IInscripcionPersistencePort inscripcionPersistencePort;
     private final com.pragma.bootcamp.domain.ports.out.IPersonaServicePort personaServicePort;
     private final IBootcampServicePort bootcampServicePort;
+    private final IReporteServicePort reporteServicePort;
+    private final ICapacidadServicePort capacidadServicePort;
 
     @Override
-    @Transactional
     public Mono<Inscripcion> inscribirPersonaEnBootcamp(Long personaId, Long bootcampId) {
         log.info("UseCase: inscribirPersonaEnBootcamp - Persona ID: {}, Bootcamp ID: {}", personaId, bootcampId);
 
@@ -65,9 +70,12 @@ public class InscripcionUseCase implements IInscripcionServicePort {
                                                                 .build();
                                                         
                                                         return inscripcionPersistencePort.saveInscripcion(nuevaInscripcion)
-                                                                .doOnSuccess(saved -> log.info(
-                                                                        "UseCase: inscribirPersonaEnBootcamp - Inscripción creada con ID: {}", 
-                                                                        saved.getId()))
+                                                                .doOnSuccess(saved -> {
+                                                                    log.info(
+                                                                            "UseCase: inscribirPersonaEnBootcamp - Inscripción creada con ID: {}",
+                                                                            saved.getId());
+                                                                    sendReporteUpdateAsync(bootcampNuevo);
+                                                                })
                                                                 .flatMap(this::enrichInscripcion);
                                                     });
                                         });
@@ -101,13 +109,6 @@ public class InscripcionUseCase implements IInscripcionServicePort {
                 });
     }
 
-    /**
-     * Valida si existe solapamiento de fechas entre el bootcamp nuevo y los bootcamps activos.
-     * Solapamiento ocurre si:
-     * - El inicio del nuevo bootcamp está dentro del rango de un bootcamp activo
-     * - El fin del nuevo bootcamp está dentro del rango de un bootcamp activo
-     * - El nuevo bootcamp contiene completamente a un bootcamp activo
-     */
     private boolean existeSolapamientoFechas(Bootcamp bootcampNuevo, List<Bootcamp> bootcampsActivos) {
         LocalDate inicioNuevo = bootcampNuevo.getFechaLanzamiento();
         LocalDate finNuevo = inicioNuevo.plusWeeks(bootcampNuevo.getDuracionSemanas());
@@ -135,4 +136,34 @@ public class InscripcionUseCase implements IInscripcionServicePort {
 
         return false;
     }
-}
+
+    private void sendReporteUpdateAsync(Bootcamp bootcamp) {
+        Set<Long> capIds = bootcamp.getCapacidadesIds() != null ? bootcamp.getCapacidadesIds() : new HashSet<>();
+        int cantCapacidades = capIds.size();
+
+        Mono<Long> countPersonasMono = inscripcionPersistencePort
+                .countInscripcionesActivasByBootcampId(bootcamp.getId());
+
+        Mono<Integer> countTecnologiasMono = capIds.isEmpty()
+                ? Mono.just(0)
+                : capacidadServicePort.getCapacidadesByIds(capIds)
+                        .flatMapIterable(cap -> cap.getTecnologias() != null ? cap.getTecnologias() : List.of())
+                        .map(TecnologiaSimpleResponse::getId)
+                        .collect(java.util.stream.Collectors.toSet())
+                        .map(Set::size)
+                        .onErrorReturn(0);
+
+
+        Mono.zip(countPersonasMono, countTecnologiasMono)
+                .flatMap(tuple -> reporteServicePort.actualizarReporte(
+                        bootcamp.getId(),
+                        tuple.getT1().intValue(),
+                        cantCapacidades,
+                        tuple.getT2()))
+                .onErrorResume(e -> {
+                    log.warn("sendReporteUpdateAsync: Error actualizando reporte del bootcamp {}: {}",
+                            bootcamp.getId(), e.getMessage());
+                    return Mono.empty();
+                })
+                .subscribe();
+    }}

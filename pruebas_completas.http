@@ -254,13 +254,15 @@ GET http://localhost:8083/api/bootcamp/9999
 ### Microservicio Bootcamp - Puerto 8083
 ### ============================================
 
-### HU5 - Listar bootcamps ordenados por NOMBRE Ascendente (por defecto)
-GET http://localhost:8083/api/bootcamp?page=0&size=10
+### HU5 - Listar bootcamps ordenados por NOMBRE Ascendente (A-Z)
+### sort=nombre → paginado a nivel de BD (eficiente)
+GET http://localhost:8083/api/bootcamp?page=0&size=10&sort=nombre&order=asc
 
 ### HU5 - Listar bootcamps ordenados por NOMBRE Descendente (Z-A)
 GET http://localhost:8083/api/bootcamp?page=0&size=10&sort=nombre&order=desc
 
 ### HU5 - Listar bootcamps ordenados por CANTIDAD de capacidades Ascendente (Menos a Más)
+### sort=cantCapacidades → paginado en memoria (requiere enriquecer con capacidades)
 GET http://localhost:8083/api/bootcamp?page=0&size=10&sort=cantCapacidades&order=asc
 
 ### HU5 - Listar bootcamps ordenados por CANTIDAD de capacidades Descendente (Más a Menos)
@@ -323,6 +325,8 @@ GET http://localhost:8083/api/bootcamp
 GET http://localhost:8082/api/capacidad
 
 ### HU6 - PASO 3: Eliminar Bootcamp Test C (debe eliminar capacidad 4 si es única)
+### COMPORTAMIENTO TRANSACCIONAL: Si el microservicio de Capacidad falla, el bootcamp NO se eliminará (rollback)
+### Si el servicio de Capacidad está UP → se elimina todo el árbol. Si está DOWN → se revierte todo.
 ### NOTA: Reemplazar {id} con el ID real que retornó la creación del Bootcamp Test C
 DELETE http://localhost:8083/api/bootcamp/16
 
@@ -643,7 +647,9 @@ Content-Type: application/json
   "bootcampId": 19
 }
 
-### HU7 - Validación: Inscribir persona inexistente (debe fallar)
+### HU7 - Validación: Inscribir persona inexistente (debe retornar 400 Bad Request)
+### CORRECCIÓN: Antes retornaba 201 con persona null. Ahora retorna 400 correctamente.
+### Respuesta esperada: {"error": "VALIDACION_ERROR", "mensaje": "La persona con ID 9999 no existe"}
 POST http://localhost:8083/api/inscripcion
 Content-Type: application/json
 
@@ -652,7 +658,7 @@ Content-Type: application/json
   "bootcampId": 5
 }
 
-### HU7 - Validación: Inscribir en bootcamp inexistente (debe fallar)
+### HU7 - Validación: Inscribir en bootcamp inexistente (debe retornar 400 Bad Request)
 POST http://localhost:8083/api/inscripcion
 Content-Type: application/json
 

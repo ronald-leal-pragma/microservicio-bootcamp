@@ -6,6 +6,8 @@ import com.pragma.bootcamp.infrastructure.r2dbc.IBootcampRepository;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -34,7 +36,12 @@ public class BootcampPersistenceAdapter implements IBootcampPersistencePort {
 
     @Override
     @CircuitBreaker(name = SERVICE_OPERATION_DB)
-    public Flux<Bootcamp> findAll(int page, int size) {
+    public Flux<Bootcamp> findAll(int page, int size, String sort, String order) {
+        if ("nombre".equalsIgnoreCase(sort)) {
+            Sort.Direction direction = "desc".equalsIgnoreCase(order) ? Sort.Direction.DESC : Sort.Direction.ASC;
+            return bootcampRepository.findAllBy(PageRequest.of(page, size, Sort.by(direction, "nombre")))
+                    .map(bootcampEntityMapper::toDomain);
+        }
         return bootcampRepository.findAll()
                 .map(bootcampEntityMapper::toDomain);
     }

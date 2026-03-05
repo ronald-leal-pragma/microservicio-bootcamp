@@ -51,7 +51,13 @@ public class InscripcionPersistenceAdapter implements IInscripcionPersistencePor
     @Override
     public Mono<Long> countInscripcionesActivasByPersonaId(Long personaId) {
         log.info("Adapter: countInscripcionesActivasByPersonaId - Contando inscripciones activas de persona ID: {}", personaId);
-        return inscripcionRepository.countByPersonaIdAndEstadoActiva(personaId);
+        return inscripcionRepository.countByPersonaIdAndEstadoActiva(personaId, "ACTIVA");
+    }
+
+    @Override
+    public Mono<Long> countInscripcionesActivasByBootcampId(Long bootcampId) {
+        log.info("Adapter: countInscripcionesActivasByBootcampId - Contando inscripciones activas del bootcamp ID: {}", bootcampId);
+        return inscripcionRepository.countByBootcampIdAndEstado(bootcampId, "ACTIVA");
     }
 
     private InscripcionEntity toEntity(Inscripcion inscripcion) {

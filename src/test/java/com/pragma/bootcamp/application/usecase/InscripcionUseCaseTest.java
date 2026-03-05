@@ -21,8 +21,10 @@ import java.time.LocalDate;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
+import com.pragma.bootcamp.domain.ports.out.ICapacidadServicePort;
+import com.pragma.bootcamp.domain.ports.out.IReporteServicePort;
+
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -37,6 +39,12 @@ class InscripcionUseCaseTest {
 
     @Mock
     private IBootcampServicePort bootcampServicePort;
+
+    @Mock
+    private IReporteServicePort reporteServicePort;
+
+    @Mock
+    private ICapacidadServicePort capacidadServicePort;
 
     @InjectMocks
     private InscripcionUseCase inscripcionUseCase;
@@ -82,6 +90,9 @@ class InscripcionUseCaseTest {
         when(inscripcionPersistencePort.countInscripcionesActivasByPersonaId(1L)).thenReturn(Mono.just(0L));
         when(inscripcionPersistencePort.findByPersonaIdActivas(1L)).thenReturn(Flux.empty());
         when(inscripcionPersistencePort.saveInscripcion(any(Inscripcion.class))).thenReturn(Mono.just(inscripcion));
+        when(inscripcionPersistencePort.countInscripcionesActivasByBootcampId(anyLong())).thenReturn(Mono.just(1L));
+        when(capacidadServicePort.getCapacidadesByIds(anySet())).thenReturn(Flux.empty());
+        when(reporteServicePort.actualizarReporte(anyLong(), anyInt(), anyInt(), anyInt())).thenReturn(Mono.empty());
 
         // Act
         Mono<Inscripcion> result = inscripcionUseCase.inscribirPersonaEnBootcamp(1L, 1L);

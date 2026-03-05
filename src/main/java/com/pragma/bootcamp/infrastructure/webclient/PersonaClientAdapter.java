@@ -25,7 +25,7 @@ public class PersonaClientAdapter implements IPersonaServicePort {
 
 
     @Override
-    @CircuitBreaker(name = SERVICE_CLIENT, fallbackMethod = "findByIdFallback")
+    @CircuitBreaker(name = SERVICE_CLIENT)
     public Mono<Persona> findById(Long id) {
         log.info("PersonaClient: Buscando persona por ID: {}", id);
         return client()

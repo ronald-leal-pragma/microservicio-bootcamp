@@ -194,7 +194,7 @@ class BootcampUseCaseTest {
         CapacidadSimpleResponse capacidad = new CapacidadSimpleResponse(1L, "Backend", List.of(tech1));
 
         when(bootcampPersistencePort.getBootcampById(1L)).thenReturn(Mono.just(bootcamp));
-        when(inscripcionRepository.findByBootcampIdAndEstadoActiva(eq(1L), anyString())).thenReturn(Flux.just(inscripcion));
+        when(inscripcionRepository.findByBootcampIdAndEstado(eq(1L), anyString())).thenReturn(Flux.just(inscripcion));
         when(personaServicePort.findById(1L)).thenReturn(Mono.just(persona));
         when(capacidadServicePort.getCapacidadesByIds(anySet())).thenReturn(Flux.just(capacidad));
 

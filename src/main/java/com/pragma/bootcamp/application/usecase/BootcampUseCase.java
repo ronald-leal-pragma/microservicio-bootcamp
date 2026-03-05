@@ -203,7 +203,7 @@ public class BootcampUseCase implements IBootcampServicePort {
                     
                     // Obtener personas inscritas activas
                     Mono<List<PersonaInscritaDTO>> personasInscritasMono = inscripcionRepository
-                            .findByBootcampIdAndEstadoActiva(id, "ACTIVA")
+                            .findByBootcampIdAndEstado(id, "ACTIVA")
                             .flatMap(inscripcionEntity -> 
                                 personaServicePort.findById(inscripcionEntity.getPersonaId())
                                     .map(persona -> PersonaInscritaDTO.builder()

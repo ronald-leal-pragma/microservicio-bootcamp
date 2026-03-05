@@ -37,7 +37,7 @@ public class InscripcionPersistenceAdapter implements IInscripcionPersistencePor
     @Override
     public Flux<Inscripcion> findByPersonaIdActivas(Long personaId) {
         log.info("Adapter: findByPersonaIdActivas - Buscando inscripciones activas de persona ID: {}", personaId);
-        return inscripcionRepository.findByPersonaIdAndEstadoActiva(personaId)
+        return inscripcionRepository.findByPersonaIdAndEstado(personaId, "ACTIVA")
                 .map(this::toModel);
     }
 
@@ -51,7 +51,7 @@ public class InscripcionPersistenceAdapter implements IInscripcionPersistencePor
     @Override
     public Mono<Long> countInscripcionesActivasByPersonaId(Long personaId) {
         log.info("Adapter: countInscripcionesActivasByPersonaId - Contando inscripciones activas de persona ID: {}", personaId);
-        return inscripcionRepository.countByPersonaIdAndEstadoActiva(personaId, "ACTIVA");
+        return inscripcionRepository.countByPersonaIdAndEstado(personaId, "ACTIVA");
     }
 
     @Override
